@@ -1,8 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Text.RegularExpressions;
-
-Type? shellAppType = null;
+﻿Type? shellAppType = null;
 dynamic? shell = null;
 
 
@@ -202,4 +198,51 @@ enum SeparateMode
   ByNone,
   ByYearAndMonthAndDay,
   ByDay,
+}
+
+class Progress(int width, int parMax)
+{
+  public int columns = Console.WindowWidth;
+  public int width = width;
+  public int par = 0;
+  public int parMax = parMax;
+  protected int rowLate = Console.CursorTop;
+
+  public virtual void Update(string message)
+  {
+    int row0 = Console.CursorTop;
+
+    float parcent = (float)par / parMax;
+    int widthNow = (int)Math.Floor(width * parcent);
+
+    string gauge = new string('>', widthNow) + new string(' ', width - widthNow);
+    string status = $"({parcent * 100:f1}%<-{par}/{parMax})";
+
+    Console.Error.WriteLine($"#[{gauge}]#{status}");
+    ClearScreenDown();
+
+    Console.Error.WriteLine(message);
+    rowLate = Console.CursorTop;
+    Console.SetCursorPosition(0, row0);
+    par++;
+  }
+
+  public virtual void Done(string doneAlert)
+  {
+    int sideLen = (int)Math.Floor((float)(width - doneAlert.Length) / 2);
+
+    string gauge = new string('=', sideLen) + doneAlert;
+    gauge += new string('=', width - gauge.Length);
+    string status = $"(100%<-{parMax}/{parMax})";
+
+    ClearScreenDown();
+    Console.Error.WriteLine($"#[{gauge}]#{status}");
+  }
+
+  protected void ClearScreenDown()
+  {
+    int clearRange = rowLate - (Console.CursorTop - 1);
+    Console.Error.Write(new string(' ', columns * clearRange));
+    Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - clearRange);
+  }
 }
