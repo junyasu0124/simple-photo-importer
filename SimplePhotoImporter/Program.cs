@@ -50,3 +50,23 @@ while (true)
         break;
     }
 }
+
+
+
+DateTimeOffset? GetShootingDate(string filePath)
+{
+    Shell32.Folder objFolder = shell.NameSpace(Path.GetDirectoryName(filePath));
+    Shell32.FolderItem folderItem = objFolder.ParseName(Path.GetFileName(filePath));
+
+    var dateString = objFolder.GetDetailsOf(folderItem, 12);
+    DateTimeOffset? date = null;
+    if (dateString != "")
+    {
+        dateString = dateString.Replace("‎", "");
+        dateString = dateString.Replace("‏", "");
+        var retarray = dateString.Split([' ', '/', ':']).ToList();
+        date = new DateTime(int.Parse(retarray[0]), int.Parse(retarray[1]), int.Parse(retarray[2]), int.Parse(retarray[3]), int.Parse(retarray[4]), 0);
+    }
+    return date;
+}
+
