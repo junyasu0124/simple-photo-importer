@@ -284,6 +284,43 @@ if (option.HasFlag(ImportOption.AddCustomMovieExtension))
   }
 }
 
+WayToGetShootingDateTime[] wayToGetShootingDateTime = [WayToGetShootingDateTime.Exif, WayToGetShootingDateTime.MediaCreated, WayToGetShootingDateTime.Creation, WayToGetShootingDateTime.Modified, WayToGetShootingDateTime.Access];
+if (option.HasFlag(ImportOption.ChangeWayToGetShootingDateTime))
+{
+  while (true)
+  {
+    Console.WriteLine("Sort the following in order of priority to get the shooting date time and enter the numbers separated by a space:");
+    Console.WriteLine("1: Exif (Only for pictures)");
+    Console.WriteLine("2: Media created (Only for movies. Media created doesn't include seconds, so if the date, hours and minutes of Media created and Creation are the same, use the seconds of Creation, otherwise use 0");
+    Console.WriteLine("3: Creation");
+    Console.WriteLine("4: Modified");
+    Console.WriteLine("5: Access");
+    Console.WriteLine("Default: Exif -> Media created -> Creation -> Modified -> Access");
+    var inputWayToGetShootingDateTime = Console.ReadLine();
+    if (string.IsNullOrWhiteSpace(inputWayToGetShootingDateTime))
+      continue;
+    var ways = inputWayToGetShootingDateTime.Split(' ');
+    if (ways.Length != 5 || MatchNotWayToGetShootingDateTime().IsMatch(inputWayToGetShootingDateTime) || ways.Distinct().Count() != 5)
+    {
+      Console.Error.WriteLine("You must specify all options.");
+      continue;
+    }
+    for (int i = 0; i < ways.Length; i++)
+    {
+      wayToGetShootingDateTime[i] = ways[i] switch
+      {
+        "1" => WayToGetShootingDateTime.Exif,
+        "2" => WayToGetShootingDateTime.MediaCreated,
+        "3" => WayToGetShootingDateTime.Creation,
+        "4" => WayToGetShootingDateTime.Modified,
+        "5" => WayToGetShootingDateTime.Access,
+        _ => throw new InvalidOperationException(),
+      };
+    }
+    break;
+  }
+}
+
 var threadCount = option.HasFlag(ImportOption.UseASingleThread) ? 1 : Environment.ProcessorCount;
 var startTime = DateTimeOffset.Now;
 
@@ -570,6 +607,14 @@ enum FormatSpecifier
   Day = 2 ^ 2,
   Time = 2 ^ 3,
   FileName = 2 ^ 4,
+}
+enum WayToGetShootingDateTime
+{
+  Exif,
+  MediaCreated,
+  Creation,
+  Modified,
+  Access,
 }
 
 static class SetCustomFormat
@@ -905,4 +950,10 @@ class Progress(int width, int total)
     Console.Write(new string(' ', columns * clearRange));
     Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - clearRange);
   }
+}
+
+partial class Program
+{
+  [GeneratedRegex("""[^1-5 ]""")]
+  private static partial Regex MatchNotWayToGetShootingDateTime();
 }
