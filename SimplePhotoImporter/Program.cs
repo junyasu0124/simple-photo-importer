@@ -8,15 +8,15 @@ using System.Text.RegularExpressions;
 
 START:
 
-string[] pictureExtensions = [".jpeg", ".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".ico", ".svg", ".heic", ".mov", ".mp4", ".m2ts", ".mts", ".avi", ".flv"];
+string[] pictureExtensions = [".jpeg", ".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".ico", ".svg", ".heic"];
 string[] movieExtensions = [".mov", ".mp4", ".m2ts", ".mts", ".avi", ".flv"];
 
+var version = typeof(Program).Assembly.GetName().Version;
+Console.WriteLine("Simple Photo Importer v" + version);
 
-Console.WriteLine("Simple Photo Importer");
-
-if (!OperatingSystem.IsWindows())
+if (!OperatingSystem.IsWindows() || Environment.OSVersion.Version.Major < 10)
 {
-  Console.Error.WriteLine("This program is only supported on Windows.");
+  Console.Error.WriteLine("Not supported OS.");
   return;
 }
 
@@ -50,31 +50,31 @@ while (true)
   }
 }
 
-SeparateMode separateMode;
+GroupingMode groupingMode;
 while (true)
 {
-  Console.WriteLine("Enter the mode to separate the files:");
+  Console.WriteLine("Enter the mode to for grouping files by directory:");
   Console.WriteLine("1: By none");
   Console.WriteLine("2: By year, month, and day");
   Console.WriteLine("3: By day");
-  var inputSeparateMode = Console.ReadLine();
+  var inputGroupMode = Console.ReadLine();
 
-  if (inputSeparateMode == "1")
+  if (inputGroupMode == "1")
   {
-    separateMode = SeparateMode.ByNone;
+    groupingMode = GroupingMode.ByNone;
     break;
   }
-  else if (inputSeparateMode == "2")
+  else if (inputGroupMode == "2")
   {
-    separateMode = SeparateMode.ByYMD;
+    groupingMode = GroupingMode.ByYMD;
     break;
   }
-  else if (inputSeparateMode == "3")
+  else if (inputGroupMode == "3")
   {
-    separateMode = SeparateMode.ByD;
+    groupingMode = GroupingMode.ByD;
     break;
   }
-  else if (inputSeparateMode == null)
+  else if (inputGroupMode == null)
   {
     continue;
   }
@@ -105,13 +105,13 @@ while (true)
       formatRule.file = FileNameFormat.OriginalFileName;
       break;
     case "2":
-      formatRule.file = FileNameFormat.ShootingDateTimeNoSeparation;
+      formatRule.file = FileNameFormat.ShootingDateTimeNoGrouping;
       break;
     case "3":
-      formatRule.file = FileNameFormat.ShootingDateTimeSeparatedByUnderBar;
+      formatRule.file = FileNameFormat.ShootingDateTimeGroupedByUnderBar;
       break;
     case "4":
-      formatRule.file = FileNameFormat.ShootingDateTimeSeparatedByHyphen;
+      formatRule.file = FileNameFormat.ShootingDateTimeGroupedByHyphen;
       break;
     case "5":
       formatRule.file = FileNameFormat.CustomFormat;
@@ -125,7 +125,7 @@ while (true)
   }
   break;
 }
-if (separateMode == SeparateMode.ByYMD)
+if (groupingMode == GroupingMode.ByYMD)
 {
   while (true)
   {
@@ -153,7 +153,7 @@ if (separateMode == SeparateMode.ByYMD)
     break;
   }
 }
-if (separateMode == SeparateMode.ByD)
+if (groupingMode == GroupingMode.ByD)
 {
   while (true)
   {
@@ -168,13 +168,13 @@ if (separateMode == SeparateMode.ByD)
     switch (inputDirectoryNameFormatByD)
     {
       case "1":
-        formatRule.directoryByD = DirectoryNameFormatByD.YMDNoSeparation;
+        formatRule.directoryByD = DirectoryNameFormatByD.YMDNoGrouping;
         break;
       case "2":
-        formatRule.directoryByD = DirectoryNameFormatByD.YMDSeparatedByUnderBar;
+        formatRule.directoryByD = DirectoryNameFormatByD.YMDGroupedByUnderBar;
         break;
       case "3":
-        formatRule.directoryByD = DirectoryNameFormatByD.YMDSeparatedByHyphen;
+        formatRule.directoryByD = DirectoryNameFormatByD.YMDGroupedByHyphen;
         break;
       case "4":
         formatRule.directoryByD = DirectoryNameFormatByD.CustomFormat;
@@ -190,19 +190,55 @@ if (separateMode == SeparateMode.ByD)
   }
 }
 
+ConflictResolution conflictResolution = ConflictResolution.AddNumber;
+while (true)
+{
+  Console.WriteLine("Enter the conflict resolution:");
+  Console.WriteLine("1: Skip if the contents are the same, otherwise, add a number to the file name. (Recommended)");
+  Console.WriteLine("2: Add a number to the file name");
+  Console.WriteLine("3: Make a new directory having name with a number and add files to the directory");
+  Console.WriteLine("4: Skip");
+  Console.WriteLine("5: Skip by directory (All files which will be copied to the same directory will be skipped)");
+  var inputConflictResolution = Console.ReadLine();
+  if (string.IsNullOrWhiteSpace(inputConflictResolution))
+    continue;
+  switch (inputConflictResolution)
+  {
+    case "1":
+      conflictResolution = ConflictResolution.SkipIfSame;
+      break;
+    case "2":
+      conflictResolution = ConflictResolution.AddNumber;
+      break;
+    case "3":
+      conflictResolution = ConflictResolution.AddNumberToDirectory;
+      break;
+    case "4":
+      conflictResolution = ConflictResolution.Skip;
+      break;
+    case "5":
+      conflictResolution = ConflictResolution.SkipByDirectory;
+      break;
+    default:
+      Console.Error.WriteLine("Invalid input.");
+      continue;
+  }
+  break;
+}
+
 ImportOption option = 0;
 while (true)
 {
   Console.WriteLine("Enter the options you want to enable. You can enter multiple options by separating them with a space:");
   Console.WriteLine("1: Move instead of copy");
-  Console.WriteLine("2: If the same name file already exists, check if the files are the same and skip if they are the same, otherwise, add a number to the file name. If this option is not enabled, always add a number to the file name.");
+  Console.WriteLine("2: If the same name file already exists, check if the files are the same and skip if they are the same, otherwise, add a number to the file name. If this option is not enabled, always add a number to the file name");
   Console.WriteLine("3: Make the extension lower case");
   Console.WriteLine("4: Make the extension upper case");
   Console.WriteLine("5: Add custom picture extension");
   Console.WriteLine("6: Add custom movie extension");
   Console.WriteLine("7: Change the way to get shooting date time");
   Console.WriteLine("8: Use a single thread");
-  Console.WriteLine("Enter nothing to finish.");
+  Console.WriteLine("Enter nothing to finish");
   var inputOption = Console.ReadLine();
 
   if (string.IsNullOrWhiteSpace(inputOption))
@@ -219,18 +255,16 @@ while (true)
     if (opt == "1")
       option |= ImportOption.Move;
     else if (opt == "2")
-      option |= ImportOption.SkipIfSame;
-    else if (opt == "3")
       option |= ImportOption.MakeExtensionLower;
-    else if (opt == "4")
+    else if (opt == "3")
       option |= ImportOption.MakeExtensionUpper;
-    else if (opt == "5")
+    else if (opt == "4")
       option |= ImportOption.AddCustomPictureExtension;
-    else if (opt == "6")
+    else if (opt == "5")
       option |= ImportOption.AddCustomMovieExtension;
-    else if (opt == "7")
+    else if (opt == "6")
       option |= ImportOption.ChangeWayToGetShootingDateTime;
-    else if (opt == "8")
+    else if (opt == "7")
       option |= ImportOption.UseASingleThread;
     else
     {
@@ -291,7 +325,7 @@ if (option.HasFlag(ImportOption.ChangeWayToGetShootingDateTime))
   {
     Console.WriteLine("Sort the following in order of priority to get the shooting date time and enter the numbers separated by a space:");
     Console.WriteLine("1: Exif (Only for pictures)");
-    Console.WriteLine("2: Media created (Only for movies. Media created doesn't include seconds, so if the date, hours and minutes of Media created and Creation are the same, use the seconds of Creation, otherwise use 0");
+    Console.WriteLine("2: Media created (Only for movies. Media created doesn't include seconds, so if Media created and Creation or Modified are close, use Creation or Modified, otherwise use 0");
     Console.WriteLine("3: Creation");
     Console.WriteLine("4: Modified");
     Console.WriteLine("5: Access");
@@ -321,10 +355,25 @@ if (option.HasFlag(ImportOption.ChangeWayToGetShootingDateTime))
   }
 }
 
+Type? shellAppType = Type.GetTypeFromProgID("Shell.Application");
+if (shellAppType == null)
+{
+  Console.Error.WriteLine("Failed to get the type of Shell.Application.");
+  return;
+}
+dynamic? shell = Activator.CreateInstance(shellAppType);
+if (shell == null)
+{
+  Console.Error.WriteLine("Failed to create an instance of Shell.Application.");
+  return;
+}
+string? objFolderPath = null;
+Shell32.Folder? objFolder = null;
+
 var threadCount = option.HasFlag(ImportOption.UseASingleThread) ? 1 : Environment.ProcessorCount;
 var startTime = DateTimeOffset.Now;
 
-if (separateMode == SeparateMode.ByNone)
+if (groupingMode == GroupingMode.ByNone)
 {
   var files = GetFiles(sourcePath);
 
@@ -332,16 +381,16 @@ if (separateMode == SeparateMode.ByNone)
   files.AsParallel().WithDegreeOfParallelism(threadCount).ForAll(file =>
   {
     var fileName = Path.GetFileName(file.Key);
-    var newFilePath = GenerateNewFilePath(destPath, fileName, file.Value, option);
+    var newFilePath = GenerateNewFilePath(destPath, fileName, file.Value);
     CopyFile(file.Key, newFilePath, file.Value, option);
     lock (progress)
       progress.Update("");
   });
   progress.Done("Done");
 }
-else if (separateMode == SeparateMode.ByYMD)
+else if (groupingMode == GroupingMode.ByYMD)
 {
-  var files = GetFilesSeparatedByYearAndMonthAndDay(sourcePath);
+  var files = GetFilesGroupedByYearAndMonthAndDay(sourcePath);
 
   var progress = new Progress(50, files.filesCount);
   files.files.AsParallel().WithDegreeOfParallelism(threadCount).ForAll(year =>
@@ -371,32 +420,18 @@ else if (separateMode == SeparateMode.ByYMD)
   });
   progress.Done("Done");
 }
-else if (separateMode == SeparateMode.ByD)
+else if (groupingMode == GroupingMode.ByD)
 {
-  var files = GetFilesSeparatedByDay(sourcePath);
+  var files = GetFilesGroupedByDay(sourcePath);
 
   var progress = new Progress(50, files.filesCount);
   files.files.AsParallel().WithDegreeOfParallelism(threadCount).ForAll(day =>
   {
-    string? directoryPath;
-    if (formatRule.directoryByD == DirectoryNameFormatByD.CustomFormat && customDirectoryFormatByD != null)
-      directoryPath = Path.Combine(destPath, CustomFormatterExtension.ToCustomYear(day.Key.Year, customDirectoryFormatByD), CustomFormatterExtension.ToCustomMonth(day.Key.Month, customDirectoryFormatByD), CustomFormatterExtension.ToCustomDay(day.Key.Day, customDirectoryFormatByD));
-    else
-      directoryPath = Path.Combine(destPath, day.Key.ToString(formatRule.directoryByD switch
-      {
-        DirectoryNameFormatByD.YMDNoSeparation => "yyyyMMdd",
-        DirectoryNameFormatByD.YMDSeparatedByUnderBar => "yyyy_MM_dd",
-        DirectoryNameFormatByD.YMDSeparatedByHyphen => "yyyy-MM-dd",
-        _ => throw new InvalidOperationException(),
-      }));
-
-    Directory.CreateDirectory(directoryPath);
+    Directory.CreateDirectory(day.Key);
 
     day.Value.AsParallel().WithDegreeOfParallelism(threadCount).ForAll(file =>
     {
-      var fileName = Path.GetFileName(file.path);
-      var newFilePath = GenerateNewFilePath(directoryPath, fileName, file.date, option);
-      CopyFile(file.path, newFilePath, file.date, option);
+      CopyFile(file.sourceFilePath, file.destFilePath, file.date, option);
       lock (progress)
         progress.Update("");
     });
@@ -411,7 +446,7 @@ void CopyFile(string sourceFileName, string destFileName, DateTimeOffset shootin
 {
   if (File.Exists(destFileName))
   {
-    Retry();
+    DisplayFailed();
     return;
   }
   try
@@ -423,50 +458,20 @@ void CopyFile(string sourceFileName, string destFileName, DateTimeOffset shootin
   }
   catch (IOException)
   {
-    Retry();
+    DisplayFailed();
   }
   catch (Exception e)
   {
     Console.Error.WriteLine($"Failed to copy {sourceFileName} to {destFileName}: {e.Message}");
   }
 
-  void Retry()
+  void DisplayFailed()
   {
-    if (option.HasFlag(ImportOption.SkipIfSame) && IsSameFile(sourcePath, destPath))
-    {
-      return;
-    }
-    var i = 2;
-    while (true)
-    {
-      destFileName = GenerateNewFilePath(Path.GetDirectoryName(destFileName) ?? "", $"{Path.GetFileNameWithoutExtension(destFileName)} ({i}){Path.GetExtension(destFileName)}", shootingDate, option);
-      try
-      {
-        if (option.HasFlag(ImportOption.Move))
-          File.Move(sourceFileName, destFileName, false);
-        else
-          File.Copy(sourceFileName, destFileName, false);
-        break;
-      }
-      catch (IOException)
-      {
-        if (i > 1000)
-        {
-          Console.Error.WriteLine($"Failed to copy {sourceFileName} to {destFileName}: Too many conflicts.");
-          break;
-        }
-        i++;
-      }
-      catch (Exception e)
-      {
-        Console.Error.WriteLine($"Failed to copy {sourceFileName} to {destFileName}: {e.Message}");
-        break;
-      }
-    }
+    Console.Error.WriteLine($"Failed to copy {sourceFileName} to {destFileName}: The file already exists.");
   }
 }
 
-(int filesCount, Dictionary<int, Dictionary<int, Dictionary<int, (string path, DateTimeOffset date)[]>>> files) GetFilesSeparatedByYearAndMonthAndDay(string parentDirectory)
+(int filesCount, Dictionary<int, Dictionary<int, Dictionary<int, (string path, DateTimeOffset date)[]>>> files) GetFilesGroupedByYearAndMonthAndDay(string parentDirectory)
 {
   var files = GetFiles(parentDirectory);
 
@@ -481,15 +486,187 @@ void CopyFile(string sourceFileName, string destFileName, DateTimeOffset shootin
             .ToDictionary(dayGroup => dayGroup.Key,
               dayGroup => dayGroup.Select(file => (file.Key, file.Value)).ToArray()))));
 }
-(int filesCount, Dictionary<DateOnly, (string path, DateTimeOffset date)[]> files) GetFilesSeparatedByDay(string parentDirectory)
+(int filesCount, Dictionary<string, (string sourceFilePath, string destFilePath, DateTimeOffset date)[]> files) GetFilesGroupedByDay(string parentDirectory)
 {
   var files = GetFiles(parentDirectory);
 
-  return (files.Count,
-    files
-    .GroupBy(file => new DateOnly(file.Value.Year, file.Value.Month, file.Value.Day))
-    .ToDictionary(dayGroup => dayGroup.Key,
-      dayGroup => dayGroup.Select(file => (file.Key, file.Value)).ToArray()));
+  List<string> skippedDirectories = [];
+  List<(string original, string changed)> addedNumberDirectories = [];
+  var separatedFiles = files
+   .GroupBy(file => new DateOnly(file.Value.Year, file.Value.Month, file.Value.Day))
+   .Select(dayGroup =>
+   {
+     string? directoryPath;
+     if (formatRule.directoryByD == DirectoryNameFormatByD.CustomFormat && customDirectoryFormatByD != null)
+       directoryPath = Path.Combine(destPath, CustomFormatterExtension.ToCustomYear(dayGroup.Key.Year, customDirectoryFormatByD), CustomFormatterExtension.ToCustomMonth(dayGroup.Key.Month, customDirectoryFormatByD), CustomFormatterExtension.ToCustomDay(dayGroup.Key.Day, customDirectoryFormatByD));
+     else
+       directoryPath = Path.Combine(destPath, dayGroup.Key.ToString(formatRule.directoryByD switch
+       {
+         DirectoryNameFormatByD.YMDNoGrouping => "yyyyMMdd",
+         DirectoryNameFormatByD.YMDGroupedByUnderBar => "yyyy_MM_dd",
+         DirectoryNameFormatByD.YMDGroupedByHyphen => "yyyy-MM-dd",
+         _ => throw new InvalidOperationException(),
+       }));
+     return (directoryPath, files: dayGroup.ToArray());
+   })
+   .ToDictionary(dayGroup => dayGroup.directoryPath,
+   dayGroup =>
+   {
+     var files = dayGroup.files;
+     Array.Sort(files, (x, y) => x.Value.CompareTo(y.Value));
+     return files
+     .GroupBy(files => GenerateNewFilePath(dayGroup.directoryPath, Path.GetFileName(files.Key), files.Value))
+     .Select(x =>
+     {
+       var newFilePath = x.Key;
+       var files = x.ToArray();
+
+       if (skippedDirectories.Contains(dayGroup.directoryPath))
+         return [];
+       if (addedNumberDirectories.Any(x => x.original == dayGroup.directoryPath))
+       {
+         var changed = addedNumberDirectories.First(x => x.original == dayGroup.directoryPath).changed;
+         newFilePath = Path.Combine(changed, Path.GetFileName(newFilePath));
+       }
+
+       if (File.Exists(newFilePath))
+       {
+         var i = 2;
+         if (conflictResolution == ConflictResolution.SkipIfSame)
+         {
+           return files.Where(file => (!IsSameFile(file.Key, newFilePath)))
+           .Select(file =>
+           {
+             while (true)
+             {
+               var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
+               if (File.Exists(renewedFilePath))
+                 continue;
+               else
+                 return (file.Key, renewedFilePath, file.Value);
+             }
+           });
+         }
+         else if (conflictResolution == ConflictResolution.AddNumber)
+         {
+           return files.Select(file =>
+           {
+             while (true)
+             {
+               var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
+               if (File.Exists(renewedFilePath))
+                 continue;
+               else
+                 return (file.Key, renewedFilePath, file.Value);
+             }
+           });
+         }
+         else if (conflictResolution == ConflictResolution.Skip)
+         {
+           return [];
+         }
+         else if (conflictResolution == ConflictResolution.AddNumberToDirectory)
+         {
+           var directoryPath = Path.GetDirectoryName(newFilePath) ?? "";
+           string newDirectoryPath;
+           while (true)
+           {
+             var renewedDirectoryPath = directoryPath + $" ({i++})";
+             if (Directory.Exists(renewedDirectoryPath))
+               continue;
+             else
+             {
+               newDirectoryPath = renewedDirectoryPath;
+               break;
+             }
+           }
+           addedNumberDirectories.Add((directoryPath, newDirectoryPath));
+           List<string> filePaths = [];
+           i = 2;
+           foreach (var file in files)
+           {
+             var fileName = Path.GetFileName(file.Key);
+             var renewedFilePath = Path.Combine(newDirectoryPath, fileName);
+             if (filePaths.Contains(renewedFilePath))
+               while (true)
+               {
+                 var renewedFilePath2 = Path.Combine(newDirectoryPath, $"{Path.GetFileNameWithoutExtension(fileName)} ({i++}){Path.GetExtension(fileName)}");
+                 if (File.Exists(renewedFilePath2))
+                   continue;
+                 else
+                 {
+                   filePaths.Add(renewedFilePath2);
+                   break;
+                 }
+               }
+             else
+               filePaths.Add(renewedFilePath);
+           }
+           return files.Zip(filePaths, (file, filePath) => (file.Key, filePath, file.Value));
+         }
+         else if (conflictResolution == ConflictResolution.SkipByDirectory)
+         {
+           skippedDirectories.Add(dayGroup.directoryPath);
+           return [];
+         }
+         else
+           throw new InvalidOperationException();
+       }
+       else
+       {
+         return files.Length switch
+         {
+           0 => [],
+           1 => files.Select(file => (file.Key, newFilePath, file.Value)),
+           _ => AddNumber(),
+         };
+       }
+
+       IEnumerable<(string, string, DateTimeOffset)> AddNumber()
+       {
+         var i = 1;
+         return files.Select(file =>
+         {
+           if (i++ == 1) return (file.Key, newFilePath, file.Value);
+
+           while (true)
+           {
+             var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
+             if (File.Exists(renewedFilePath))
+               continue;
+             else
+               return (file.Key, renewedFilePath, file.Value);
+           }
+         });
+       }
+     }).SelectMany(x => x).ToArray();
+   });
+
+  if (skippedDirectories.Count > 0)
+  {
+    for (var i = 0; i < skippedDirectories.Count; i++)
+    {
+      separatedFiles[skippedDirectories[i]] = [];
+    }
+  }
+  if (addedNumberDirectories.Count > 0)
+  {
+    for (var i = 0; i < addedNumberDirectories.Count; i++)
+    {
+      var original = addedNumberDirectories[i].original;
+      var changed = addedNumberDirectories[i].changed;
+      var containedFiles = separatedFiles[original];
+      separatedFiles.Remove(original);
+      for (var j = containedFiles.Length - 1; j >= 0; j--)
+      {
+        if (containedFiles[j].Item2.StartsWith(original + "\\"))
+          containedFiles[j].Item2 = containedFiles[j].Item2[original.Length..].Insert(0, changed);
+      }
+      separatedFiles[changed] = containedFiles;
+    }
+  }
+
+  return (separatedFiles.SelectMany(x => x.Value).Count(), separatedFiles);
 }
 Dictionary<string, DateTimeOffset> GetFiles(string parentDirectory)
 {
@@ -501,21 +678,135 @@ Dictionary<string, DateTimeOffset> GetFiles(string parentDirectory)
 }
 DateTimeOffset GetShootingDate(string filePath)
 {
-  try
+  var isMovie = movieExtensions.Contains(Path.GetExtension(filePath).ToLower());
+  var ways = isMovie ? wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.Exif) : wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.MediaCreated);
+  DateTimeOffset? creation = null;
+  DateTimeOffset? modified = null;
+  foreach (var way in ways)
   {
-    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-    using var img = Image.FromStream(fs, false, false);
-    var item = img.GetPropertyItem(36867);
-    if (item == null || item.Value == null || item.Value.Length == 0)
-      return new DateTimeOffset(File.GetCreationTime(filePath));
-    var picDateStr = Encoding.UTF8.GetString(item.Value).Trim(['\0']);
-    return DateTimeOffset.ParseExact(picDateStr, "yyyy:MM:dd HH:mm:ss", null);
+    DateTimeOffset? date;
+    switch (way)
+    {
+      case WayToGetShootingDateTime.Exif:
+        date = ByExif(filePath);
+        break;
+      case WayToGetShootingDateTime.MediaCreated:
+        date = ByMediaCreated(filePath, ref creation, ref modified);
+        break;
+      case WayToGetShootingDateTime.Creation:
+        if (creation != null)
+          return creation.Value;
+        date = creation = ByCreation(filePath);
+        break;
+      case WayToGetShootingDateTime.Modified:
+        if (modified != null)
+          return modified.Value;
+        date = modified = ByModified(filePath);
+        break;
+      case WayToGetShootingDateTime.Access:
+        date = ByAccess(filePath);
+        break;
+      default:
+        throw new InvalidOperationException();
+    }
+    if (date != null)
+      return date.Value;
   }
-  catch { }
   return new DateTimeOffset(File.GetCreationTime(filePath));
+
+  DateTimeOffset? ByExif(string filePath)
+  {
+    try
+    {
+      using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+      using var image = Image.FromStream(fileStream, false, false);
+      var item = image.GetPropertyItem(36867);
+      if (item == null || item.Value == null || item.Value.Length == 0)
+        return null;
+      var picDateStr = Encoding.UTF8.GetString(item.Value).Trim(['\0']);
+      return DateTimeOffset.ParseExact(picDateStr, "yyyy:MM:dd HH:mm:ss", null);
+    }
+    catch
+    {
+      return null;
+    }
+  }
+  DateTimeOffset? ByMediaCreated(string filePath, ref DateTimeOffset? creation, ref DateTimeOffset? modified)
+  {
+    try
+    {
+      var directoryPath = Path.GetDirectoryName(filePath);
+      if (objFolder == null || objFolderPath != directoryPath)
+      {
+        objFolder = shell.NameSpace(directoryPath);
+        objFolderPath = directoryPath;
+      }
+      Shell32.FolderItem folderItem = objFolder.ParseName(Path.GetFileName(filePath));
+      var dateString = objFolder.GetDetailsOf(folderItem, 208);
+      if (dateString == null)
+        return null;
+      dateString = MatchOtherThanNumbers().Replace(dateString, "");
+      if (dateString.Length != 12)
+        return null;
+      var mediaCreated = DateTimeOffset.ParseExact(dateString, "yyyyMMddHHmm", null);
+
+      creation ??= ByCreation(filePath);
+      modified ??= ByModified(filePath);
+
+      var precedence = wayToGetShootingDateTime.First(x => x == WayToGetShootingDateTime.Creation || x == WayToGetShootingDateTime.Modified);
+      var first = precedence == WayToGetShootingDateTime.Creation ? creation : modified;
+      var second = precedence == WayToGetShootingDateTime.Creation ? modified : creation;
+      if (first != null && second != null && Math.Abs((mediaCreated - first.Value).TotalMinutes) < 2)
+        return first.Value;
+      else
+      {
+        if (second != null && Math.Abs((mediaCreated - second.Value).TotalMinutes) < 2)
+          return second.Value;
+        else
+          return mediaCreated;
+      }
+    }
+    catch
+    {
+      return null;
+    }
+  }
+  DateTimeOffset? ByCreation(string filePath)
+  {
+    try
+    {
+      return new DateTimeOffset(File.GetCreationTime(filePath));
+    }
+    catch
+    {
+      return null;
+    }
+  }
+  DateTimeOffset? ByModified(string filePath)
+  {
+    try
+    {
+      return new DateTimeOffset(File.GetLastWriteTime(filePath));
+    }
+    catch
+    {
+      return null;
+    }
+  }
+  DateTimeOffset? ByAccess(string filePath)
+  {
+    try
+    {
+      return new DateTimeOffset(File.GetLastAccessTime(filePath));
+    }
+    catch
+    {
+      return null;
+    }
+  }
 }
 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-string GenerateNewFilePath(string directoryPath, string originalFileName, DateTimeOffset shootingDate, ImportOption option)
+string GenerateNewFilePath(string directoryPath, string originalFileName, DateTimeOffset shootingDate)
 {
   string extension;
   if (option.HasFlag(ImportOption.MakeExtensionLower))
@@ -532,9 +823,9 @@ string GenerateNewFilePath(string directoryPath, string originalFileName, DateTi
     return formatRule.file switch
     {
       FileNameFormat.OriginalFileName => Path.Combine(directoryPath, originalFileName),
-      FileNameFormat.ShootingDateTimeNoSeparation => Path.Combine(directoryPath, $"{shootingDate:yyyyMMddHHmmss}{extension}"),
-      FileNameFormat.ShootingDateTimeSeparatedByUnderBar => Path.Combine(directoryPath, $"{shootingDate:yyyy_MM_dd_HH_mm_ss}{extension}"),
-      FileNameFormat.ShootingDateTimeSeparatedByHyphen => Path.Combine(directoryPath, $"{shootingDate:yyyy-MM-dd-HH-mm-ss}{extension}"),
+      FileNameFormat.ShootingDateTimeNoGrouping => Path.Combine(directoryPath, $"{shootingDate:yyyyMMddHHmmss}{extension}"),
+      FileNameFormat.ShootingDateTimeGroupedByUnderBar => Path.Combine(directoryPath, $"{shootingDate:yyyy_MM_dd_HH_mm_ss}{extension}"),
+      FileNameFormat.ShootingDateTimeGroupedByHyphen => Path.Combine(directoryPath, $"{shootingDate:yyyy-MM-dd-HH-mm-ss}{extension}"),
       _ => throw new InvalidOperationException(),
     };
 }
@@ -561,7 +852,7 @@ bool IsSameFile(string file1, string file2)
   }
 }
 
-enum SeparateMode
+enum GroupingMode
 {
   ByNone,
   ByYMD,
@@ -570,9 +861,9 @@ enum SeparateMode
 enum FileNameFormat
 {
   OriginalFileName,
-  ShootingDateTimeNoSeparation,
-  ShootingDateTimeSeparatedByUnderBar,
-  ShootingDateTimeSeparatedByHyphen,
+  ShootingDateTimeNoGrouping,
+  ShootingDateTimeGroupedByUnderBar,
+  ShootingDateTimeGroupedByHyphen,
   CustomFormat,
 }
 enum DirectoryNameFormatByYMD
@@ -582,31 +873,38 @@ enum DirectoryNameFormatByYMD
 }
 enum DirectoryNameFormatByD
 {
-  YMDNoSeparation,
-  YMDSeparatedByUnderBar,
-  YMDSeparatedByHyphen,
+  YMDNoGrouping,
+  YMDGroupedByUnderBar,
+  YMDGroupedByHyphen,
   CustomFormat,
+}
+enum ConflictResolution
+{
+  SkipIfSame,
+  AddNumber,
+  AddNumberToDirectory,
+  Skip,
+  SkipByDirectory,
 }
 [Flags]
 enum ImportOption
 {
-  Move = 2 ^ 0,
-  SkipIfSame = 2 ^ 1,
-  MakeExtensionLower = 2 ^ 2,
-  MakeExtensionUpper = 2 ^ 3,
-  AddCustomPictureExtension = 2 ^ 4,
-  AddCustomMovieExtension = 2 ^ 5,
-  ChangeWayToGetShootingDateTime = 2 ^ 6,
-  UseASingleThread = 2 ^ 7,
+  Move = 1,
+  MakeExtensionLower = 2,
+  MakeExtensionUpper = 4,
+  AddCustomPictureExtension = 8,
+  AddCustomMovieExtension = 16,
+  ChangeWayToGetShootingDateTime = 32,
+  UseASingleThread = 128,
 }
 [Flags]
 enum FormatSpecifier
 {
-  Year = 2 ^ 0,
-  Month = 2 ^ 1,
-  Day = 2 ^ 2,
-  Time = 2 ^ 3,
-  FileName = 2 ^ 4,
+  Year = 1,
+  Month = 2,
+  Day = 4,
+  Time = 8,
+  FileName = 16,
 }
 enum WayToGetShootingDateTime
 {
@@ -728,7 +1026,7 @@ static class SetCustomFormat
       Console.WriteLine("ss: Second like 05");
     }
     if (usingSpecifier.HasFlag(FormatSpecifier.FileName))
-      Console.WriteLine("NN: Original file name like IMG_0001 (This specifier is only available for this application)");
+      Console.WriteLine("NN: Original file name like IMG_0001 (Without extension. This specifier is only available for this application)");
     Console.WriteLine("If you want to use different format specifiers, you can check other format specifiers on this page: https://learn.microsoft.com/dotnet/standard/base-types/custom-date-and-time-format-strings (Not all format specifiers are supported)");
     if (usingSpecifier.HasFlag(FormatSpecifier.Time))
       Console.WriteLine("For example, if you want to use the format yyyyMMdd_HHmmss, enter yyyyMMdd_HHmmss. It will be converted to 20240102_030405.");
@@ -899,7 +1197,7 @@ static partial class CustomFormatterExtension
 
   public static string ToCustomFileName(this string format, string fileName)
   {
-    return ReplaceSpecifiers(format, fileNameFormatSpecifier, fileName);
+    return ReplaceSpecifiers(format, fileNameFormatSpecifier, Path.GetFileNameWithoutExtension(fileName));
   }
 
   [GeneratedRegex("""(?<![N\\])NN(?!N)""")]
@@ -956,4 +1254,7 @@ partial class Program
 {
   [GeneratedRegex("""[^1-5 ]""")]
   private static partial Regex MatchNotWayToGetShootingDateTime();
+
+  [GeneratedRegex(@"[^0-9]")]
+  private static partial Regex MatchOtherThanNumbers();
 }
