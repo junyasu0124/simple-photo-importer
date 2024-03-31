@@ -2,9 +2,9 @@
 
 public static partial class GetFiles
 {
-  public static FileAddress[] GetFilesGroupedByYD(string[] sourcePaths, string[] excludedSourcePaths, string[] destPaths, string[] pictureExtensions, string[] movieExtensions, DirectoryNameFormatByYD directoryNameFormatByYD, (string Year, string Day)? customDirectoryFormatByYD, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option, WayToGetShootingDateTime[] wayToGetShootingDateTime)
+  public static FileAddress[] GetFilesGroupedByYD(string[] sourcePaths, string[] excludedSourcePaths, string[] destPaths, string[] photoExtensions, string[] videoExtensions, DirectoryNameFormatByYD directoryNameFormatByYD, (string Year, string Day)? customDirectoryFormatByYD, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option, WayToGetShootingDateTime[] wayToGetShootingDateTime)
   {
-    var files = GetAllFiles(sourcePaths, excludedSourcePaths, pictureExtensions, movieExtensions, wayToGetShootingDateTime);
+    var files = GetAllFiles(sourcePaths, excludedSourcePaths, photoExtensions, videoExtensions, wayToGetShootingDateTime);
 
     List<FileAddress> result = [];
 

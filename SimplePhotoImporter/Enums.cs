@@ -75,8 +75,8 @@ public enum ImportOption
   Move = 1,
   MakeExtensionLower = 2,
   MakeExtensionUpper = 4,
-  AddCustomPictureExtension = 8,
-  AddCustomMovieExtension = 16,
+  AddCustomPhotoExtension = 8,
+  AddCustomVideoExtension = 16,
   ChangeDateInfoPriority = 32,
   UseASingleThread = 128,
 }

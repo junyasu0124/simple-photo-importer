@@ -2,7 +2,7 @@
 
 namespace SimplePhotoImporter.Usage;
 
-public class UsageParent : IUsageItem
+public class UsageParent : IUsageString
 {
   public UsageParent(string name, IEnumerable<UsageChildren> childrens)
   {

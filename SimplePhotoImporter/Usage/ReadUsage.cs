@@ -20,10 +20,10 @@ public static partial class Usage
     string? CustomDirectoryFormatByD,
     ConflictResolution ConflictResolution,
     ImportOption Option,
-    string[] PictureExtensions,
-    string[] MovieExtensions,
+    string[] PhotoExtensions,
+    string[] VideoExtensions,
     WayToGetShootingDateTime[] WayToGetShootingDateTime)? Data
-    ) Read(string[] args, string[] pictureExtensions, string[] movieExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
+    ) Read(string[] args, string[] photoExtensions, string[] videoExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
   {
     string[] arguments =
     [
@@ -39,41 +39,45 @@ public static partial class Usage
       "--move",
       "--lower-extension",
       "--upper-extension",
-      "--custom-picture-extension=",
-      "--custom-movie-extension=",
+      "--custom-photo-extension=",
+      "--custom-video-extension=",
       "--date-info-priority=",
       "--single-thread",
     ];
 
     if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h"))
     {
-      Console.WriteLine("This program searches for pictures and movies in a specified directory, separates the files by shooting date and time, renames them, and imports them into other directories.");
-
-      Console.WriteLine("Usage: SimplePhotoImporter <-Start the program in interactive mode");
-      Console.WriteLine("Usage: SimplePhotoImporter [app-option]");
-      Console.WriteLine($"Usage: SimplePhotoImporter [{arguments[0]}...] [{arguments[1]}...] ([{arguments[2]}...]) ([{arguments[3]}...]) ([{arguments[4]}...]) ([{arguments[5]}...]) ([{nameof(options)}])");
-
       Write(
         [
+          new UsageText("This program searches for photoes and videos in a specified directory, separates the files by shooting date and time, renames them, and imports them into other directories."),
+          new UsageLineBreak(),
+
+          new UsageText("Usage:", "SimplePhotoImporter <-Start the program in interactive mode"),
+          new UsageText("Usage:", "SimplePhotoImporter [app-option]"),
+          new UsageText("Usage:", $"SimplePhotoImporter [{arguments[0]}...] [{arguments[1]}...] ([{arguments[2]}...]) ([{arguments[3]}...]) ([{arguments[4]}...]) ([{arguments[5]}...]) ([{nameof(options)}])"),
+          new UsageLineBreak(),
+
           new UsageParent("app-option",
             [
               new UsageChildren("--help, -h", "Show this help message"),
-              new UsageChildren("--version, -v", "Show the version of the program"),
+              new UsageChildren("--version, -v", "Show the version of this tool"),
             ]
           ),
+          new UsageLineBreak(),
           new UsageChildren($"{arguments[0]}...", "The paths to the folder you want to import from. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space). If you want to exclude a directory, enter the path with a asterisk at the beginning. e.g. \"C:\\Users\\user\\Pictures Folder\" *\"C:\\Users\\user\\Pictures Folder\\excluded\""),
           new UsageChildren($"{arguments[1]}...", "The paths to the folder you want to import to. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space)."),
           new UsageChildren($"{arguments[2]}...", "The mode to for grouping files by directory. 1({space}): \\IMG_0001.jpg, 2(y\\M\\d): \\yyyy\\MM\\dd\\IMG_0001.jpg, 3(y\\d): \\yyyy\\dd\\IMG_0001.jpg, 4(d): \\dd\\IMG_0001.jpg  <Default: 1>"),
-          new UsageChildren($"{arguments[3]}...", "The format of the file name. Enter the format like yyyyMMddHHmmss. <Default: OriginalFileName>"),
+          new UsageChildren($"{arguments[3]}...", "The format of the file name. Enter the format like yyyyMMddHHmmss. <Default: {OriginalFileName}>"),
           new UsageChildren($"{arguments[4]}...", "The format of the directory name by year, month, and day. Enter the format like yyyy\\MM\\dd. You must specify {--grouping-mode=2: three, --grouping-mode=3: two, --grouping-mode=4: one} values separated by a backslash."),
           new UsageChildren($"{arguments[5]}...", "The conflict resolution. 1: Skip if the contents are the same, otherwise, add a number to the file name. 2: Skip. 3: Skip by directory. 4: Add a number to the file name. 5: Make a new directory having name with a number and add files to the directory. <Default: 1>"),
+          new UsageLineBreak(),
           new UsageParent($"{nameof(options)}",
             [
               new UsageChildren(options[0], "Move instead of copy"),
               new UsageChildren(options[1], "Make the extension lower case"),
               new UsageChildren(options[2], "Make the extension upper case"),
-              new UsageChildren($"{options[3]}...", "Add custom picture extension (e.g. --custom-picture-extension=:remove(<-Remove the default extensions) .photo)"),
-              new UsageChildren($"{options[4]}...", "Add custom movie extension (e.g. --custom-picture-extension=:remove(<-Remove the default extensions) .movie)\""),
+              new UsageChildren($"{options[3]}...", "Add custom photo extension (e.g. --custom-photo-extension=:remove(<-Remove the default extensions) .photo)"),
+              new UsageChildren($"{options[4]}...", "Add custom video extension (e.g. --custom-video-extension=:remove(<-Remove the default extensions) .video)"),
               new UsageChildren($"{options[5]}...", "Change priority of the way to get shooting date time. 1: Exif, 2: Media created, 3: Creation, 4: Modified, 5: Access  You must specify all values separated by a space."),
               new UsageChildren(options[6], "Use a single thread"),
             ]
@@ -320,10 +324,10 @@ public static partial class Usage
         {
           option |= ImportOption.MakeExtensionUpper;
         }
-        // --custom-picture-extension
+        // --custom-photo-extension
         else if (args[i].StartsWith(options[3]))
         {
-          option |= ImportOption.AddCustomPictureExtension;
+          option |= ImportOption.AddCustomPhotoExtension;
           List<string> extensions = [];
           startI = i;
           for (i += 0; i < args.Length; i++)
@@ -340,15 +344,15 @@ public static partial class Usage
           }
           if (extensions.Contains(":remove"))
           {
-            pictureExtensions = [];
+            photoExtensions = [];
             extensions.Remove(":remove");
           }
-          pictureExtensions = [.. pictureExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
+          photoExtensions = [.. photoExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
         }
-        // --custom-movie-extension
+        // --custom-video-extension
         else if (args[i].StartsWith(options[4]))
         {
-          option |= ImportOption.AddCustomMovieExtension;
+          option |= ImportOption.AddCustomVideoExtension;
           List<string> extensions = [];
           startI = i;
           for (i += 0; i < args.Length; i++)
@@ -365,10 +369,10 @@ public static partial class Usage
           }
           if (extensions.Contains(":remove"))
           {
-            movieExtensions = [];
+            videoExtensions = [];
             extensions.Remove(":remove");
           }
-          movieExtensions = [.. movieExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
+          videoExtensions = [.. videoExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
         }
         // --date-info-priority
         else if (args[i].StartsWith(options[5]))
@@ -412,7 +416,7 @@ public static partial class Usage
         }
       }
 
-      return (true, false, ([.. sourcePaths], [.. destPaths], [.. destPaths], groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, pictureExtensions, movieExtensions, wayToGetShootingDateTime));
+      return (true, false, ([.. sourcePaths], [.. destPaths], [.. destPaths], groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, photoExtensions, videoExtensions, wayToGetShootingDateTime));
     }
   }
 }

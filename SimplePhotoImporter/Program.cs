@@ -20,12 +20,14 @@ public partial class Program
     var version = typeof(Program).Assembly.GetName().Version;
     Console.WriteLine("Simple Photo Importer v" + version);
 
-    string[] pictureExtensions = [".jpeg", ".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".ico", ".svg", ".heic"];
-    string[] movieExtensions = [".mov", ".mp4", ".m2ts", ".mts", ".avi", ".flv"];
+    string[] photoExtensions = [".jpeg", ".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".ico", ".svg", ".heic"];
+    string[] videoExtensions = [".mov", ".mp4", ".m2ts", ".mts", ".avi", ".flv"];
 
-    WayToGetShootingDateTime[] wayToGetShootingDateTime = [WayToGetShootingDateTime.Exif, WayToGetShootingDateTime.MediaCreated, WayToGetShootingDateTime.Creation, WayToGetShootingDateTime.Modified, WayToGetShootingDateTime.Access];
-    
-    var (canContinue, needInteractive, data) = Read(args, pictureExtensions, movieExtensions, wayToGetShootingDateTime);
+    WayToGetShootingDateTime[] wayToGetShootingDateTime = [
+      WayToGetShootingDateTime.Exif, WayToGetShootingDateTime.MediaCreated, WayToGetShootingDateTime.Creation, WayToGetShootingDateTime.Modified, WayToGetShootingDateTime.Access
+    ];
+
+    var (canContinue, needInteractive, data) = Read(args, photoExtensions, videoExtensions, wayToGetShootingDateTime);
 
     if (!canContinue)
       return;
@@ -50,7 +52,7 @@ public partial class Program
 
     if (data != null && !needInteractive)
     {
-      (sourcePaths, excludedSourcePaths, destPaths, groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, pictureExtensions, movieExtensions, wayToGetShootingDateTime) = data.Value;
+      (sourcePaths, excludedSourcePaths, destPaths, groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, photoExtensions, videoExtensions, wayToGetShootingDateTime) = data.Value;
     }
 
     if (needInteractive)
@@ -347,8 +349,8 @@ public partial class Program
         Console.WriteLine("1: Move instead of copy");
         Console.WriteLine("2: Make the extension lower case");
         Console.WriteLine("3: Make the extension upper case");
-        Console.WriteLine("4: Add custom picture extension");
-        Console.WriteLine("5: Add custom movie extension");
+        Console.WriteLine("4: Add custom photo extension");
+        Console.WriteLine("5: Add custom video extension");
         Console.WriteLine("6: Change priority of the way to get shooting date time");
         Console.WriteLine("7: Use a single thread");
         Console.WriteLine("Enter nothing to finish");
@@ -372,9 +374,9 @@ public partial class Program
           else if (opt == "3")
             option |= ImportOption.MakeExtensionUpper;
           else if (opt == "4")
-            option |= ImportOption.AddCustomPictureExtension;
+            option |= ImportOption.AddCustomPhotoExtension;
           else if (opt == "5")
-            option |= ImportOption.AddCustomMovieExtension;
+            option |= ImportOption.AddCustomVideoExtension;
           else if (opt == "6")
             option |= ImportOption.ChangeDateInfoPriority;
           else if (opt == "7")
@@ -396,38 +398,38 @@ public partial class Program
         break;
       }
 
-      if (option.HasFlag(ImportOption.AddCustomPictureExtension))
+      if (option.HasFlag(ImportOption.AddCustomPhotoExtension))
       {
-        Console.WriteLine("""Enter the custom picture extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default picture extensions, enter ":remove" and the custom extensions you want to use.""");
-        Console.WriteLine($"Default picture extensions: {string.Join(' ', pictureExtensions)}");
-        var customPictureExtension = Console.ReadLine();
-        if (customPictureExtension != null)
+        Console.WriteLine("""Enter the custom photo extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default photo extensions, enter ":remove" and the custom extensions you want to use.""");
+        Console.WriteLine($"Default photo extensions: {string.Join(' ', photoExtensions)}");
+        var customPhotoExtension = Console.ReadLine();
+        if (customPhotoExtension != null)
         {
-          var entereds = customPictureExtension.Split(' ').ToList();
+          var entereds = customPhotoExtension.Split(' ').ToList();
           if (entereds.Contains(":remove"))
           {
-            pictureExtensions = [];
+            photoExtensions = [];
             entereds.Remove(":remove");
           }
-          var customPictureExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
-          pictureExtensions = [.. pictureExtensions, .. customPictureExtensions];
+          var customPhotoExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
+          photoExtensions = [.. photoExtensions, .. customPhotoExtensions];
         }
       }
-      if (option.HasFlag(ImportOption.AddCustomMovieExtension))
+      if (option.HasFlag(ImportOption.AddCustomVideoExtension))
       {
-        Console.WriteLine("""Enter the custom movie extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default movie extensions, enter ":remove" and the custom extensions you want to use.""");
-        Console.WriteLine($"Default movie extensions: {string.Join(' ', movieExtensions)}");
-        var customMovieExtension = Console.ReadLine();
-        if (customMovieExtension != null)
+        Console.WriteLine("""Enter the custom video extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default video extensions, enter ":remove" and the custom extensions you want to use.""");
+        Console.WriteLine($"Default video extensions: {string.Join(' ', videoExtensions)}");
+        var customVideoExtension = Console.ReadLine();
+        if (customVideoExtension != null)
         {
-          var entereds = customMovieExtension.Split(' ').ToList();
+          var entereds = customVideoExtension.Split(' ').ToList();
           if (entereds.Contains(":remove"))
           {
-            movieExtensions = [];
+            videoExtensions = [];
             entereds.Remove(":remove");
           }
-          var customMovieExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
-          movieExtensions = [.. movieExtensions, .. customMovieExtensions];
+          var customVideoExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
+          videoExtensions = [.. videoExtensions, .. customVideoExtensions];
         }
       }
 
@@ -436,8 +438,8 @@ public partial class Program
         while (true)
         {
           Console.WriteLine("Sort the following in order of priority to get the shooting date time and enter the numbers separated by a space:");
-          Console.WriteLine("1: Exif (Only for pictures)");
-          Console.WriteLine("2: Media created (Only for movies. Media created doesn't include seconds, so if Media created and Creation or Modified are close, use Creation or Modified, otherwise use 0");
+          Console.WriteLine("1: Exif (Only for photoes)");
+          Console.WriteLine("2: Media created (Only for videos. Media created doesn't include seconds, so if Media created and Creation or Modified are close, use Creation or Modified, otherwise use 0");
           Console.WriteLine("3: Creation");
           Console.WriteLine("4: Modified");
           Console.WriteLine("5: Access");
@@ -475,10 +477,10 @@ public partial class Program
 
     var files = groupingMode switch
     {
-      GroupingMode.NoGrouping => GetFilesNoGrouping(sourcePaths, excludedSourcePaths, destPaths, pictureExtensions, movieExtensions, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
-      GroupingMode.GroupedByYMD => GetFilesGroupedByYMD(sourcePaths, excludedSourcePaths, destPaths, pictureExtensions, movieExtensions, nameFormat.DirectoryByYMD, customDirectoryFormatByYMD, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
-      GroupingMode.GroupedByYD => GetFilesGroupedByYD(sourcePaths, excludedSourcePaths, destPaths, pictureExtensions, movieExtensions, nameFormat.DirectoryByYD, customDirectoryFormatByYD, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
-      GroupingMode.GroupedByD => GetFilesGroupedByD(sourcePaths, excludedSourcePaths, destPaths, pictureExtensions, movieExtensions, nameFormat.DirectoryByD, customDirectoryFormatByD, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
+      GroupingMode.NoGrouping => GetFilesNoGrouping(sourcePaths, excludedSourcePaths, destPaths, photoExtensions, videoExtensions, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
+      GroupingMode.GroupedByYMD => GetFilesGroupedByYMD(sourcePaths, excludedSourcePaths, destPaths, photoExtensions, videoExtensions, nameFormat.DirectoryByYMD, customDirectoryFormatByYMD, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
+      GroupingMode.GroupedByYD => GetFilesGroupedByYD(sourcePaths, excludedSourcePaths, destPaths, photoExtensions, videoExtensions, nameFormat.DirectoryByYD, customDirectoryFormatByYD, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
+      GroupingMode.GroupedByD => GetFilesGroupedByD(sourcePaths, excludedSourcePaths, destPaths, photoExtensions, videoExtensions, nameFormat.DirectoryByD, customDirectoryFormatByD, nameFormat.File, customFileFormat, conflictResolution, option, wayToGetShootingDateTime),
       _ => throw new InvalidOperationException(),
     };
 

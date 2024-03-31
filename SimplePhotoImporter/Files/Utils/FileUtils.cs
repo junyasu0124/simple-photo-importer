@@ -28,16 +28,16 @@ public static class FileUtils
     }
   }
 
-  public static DateTimeOffset GetShootingDate(string filePath, string[] pictureExtensions, string[] movieExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
+  public static DateTimeOffset GetShootingDate(string filePath, string[] photoExtensions, string[] videoExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
   {
     var extension = Path.GetExtension(filePath).ToLower();
-    var isMovie = movieExtensions.Contains(extension);
-    if (!isMovie)
+    var isVideo = videoExtensions.Contains(extension);
+    if (!isVideo)
     {
-      if (!pictureExtensions.Contains(extension))
-        throw new ArgumentException("The file is not a picture or a movie.");
+      if (!photoExtensions.Contains(extension))
+        throw new ArgumentException("The file is not a photo or a video.");
     }
-    var ways = isMovie ? wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.Exif) : wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.MediaCreated);
+    var ways = isVideo ? wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.Exif) : wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.MediaCreated);
     DateTimeOffset? creation = null;
     DateTimeOffset? modified = null;
     foreach (var way in ways)
