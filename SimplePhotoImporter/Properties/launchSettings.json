@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SimplePhotoImporter": {
+      "commandName": "Project",
+      "commandLineArgs": "--source-paths=d:\\pictures --dest-paths=d:\\separated \"d:\\separated 2\" --grouping-mode=d --file-name-format=\"yyyyMMddHHmmss NN\" --directory-name-format=yyyy\\MM\\dd --conflict-resolution=1 --single-thread "
+    }
+  }
+}

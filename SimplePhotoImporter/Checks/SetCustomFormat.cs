@@ -11,7 +11,7 @@ public static partial class Checks
       if (i == 0)
         OutputCustomFormatDescription(usingSpecifier);
       var customFileFormat = Console.ReadLine();
-      if (customFileFormat != null && IsValidFormat(customFileFormat))
+      if (customFileFormat != null && IsValidDateTimeFormat(customFileFormat))
         return customFileFormat;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -32,7 +32,7 @@ public static partial class Checks
       if (i == 0)
         OutputCustomFormatDescription(usingSpecifier);
       var customDirectoryFormatByDay = Console.ReadLine();
-      if (customDirectoryFormatByDay != null && IsValidFormat(customDirectoryFormatByDay))
+      if (customDirectoryFormatByDay != null && IsValidDateTimeFormat(customDirectoryFormatByDay))
         return customDirectoryFormatByDay;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -54,7 +54,7 @@ public static partial class Checks
       if (i == 0)
         OutputCustomFormatDescription(usingSpecifier);
       year = Console.ReadLine();
-      if (year != null && IsValidFormat(year))
+      if (year != null && IsValidDateTimeFormat(year))
         break;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -68,7 +68,7 @@ public static partial class Checks
     {
       Console.WriteLine("Enter the custom format for the month directory name:");
       month = Console.ReadLine();
-      if (month != null && IsValidFormat(month))
+      if (month != null && IsValidDateTimeFormat(month))
         break;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -82,7 +82,7 @@ public static partial class Checks
     {
       Console.WriteLine("Enter the custom format for the day directory name:");
       day = Console.ReadLine();
-      if (day != null && IsValidFormat(day))
+      if (day != null && IsValidDateTimeFormat(day))
         break;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -104,7 +104,7 @@ public static partial class Checks
       if (i == 0)
         OutputCustomFormatDescription(usingSpecifier);
       year = Console.ReadLine();
-      if (year != null && IsValidFormat(year))
+      if (year != null && IsValidDateTimeFormat(year))
         break;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -118,7 +118,7 @@ public static partial class Checks
     {
       Console.WriteLine("Enter the custom format for the day directory name:");
       day = Console.ReadLine();
-      if (day != null && IsValidFormat(day))
+      if (day != null && IsValidDateTimeFormat(day))
         break;
       else
         Console.Error.WriteLine("Invalid format.");
@@ -157,7 +157,7 @@ public static partial class Checks
   }
   private static void OutputTryAgainMessage() => Console.Error.WriteLine("You have tried too many times. Try again from the beginning.");
 
-  private static bool IsValidFormat(string format)
+  public static bool IsValidDateTimeFormat(string format)
   {
     var testDate = DateTimeOffset.Now;
     try

@@ -7,7 +7,11 @@ public static partial class GetFiles
   public static IEnumerable<FileAddress> GenerateNewFileNameForEachFileName(this KeyValuePair<string, DateTimeOffset>[] files, List<string> skippedDirectories, List<(string Original, string Changed)> addedNumberDirectories, (string DirectoryPath, KeyValuePair<string, DateTimeOffset>[] Files) dayGroup, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option)
   {
     return files
-      .GroupBy(files => GenerateNewFilePath(dayGroup.DirectoryPath, Path.GetFileName(files.Key), files.Value, option, fileNameFormat, customFileNameFormat))
+      .Select(file => {
+        var newFilePath = GenerateNewFilePath(dayGroup.DirectoryPath, Path.GetFileName(file.Key), file.Value, option, fileNameFormat, customFileNameFormat);
+        return (File: file, NewFilePath: newFilePath );
+        })
+      .GroupBy(file => file.NewFilePath, StringComparer.OrdinalIgnoreCase )
       .Select(x =>
       {
         var newFilePath = x.Key;
@@ -26,16 +30,16 @@ public static partial class GetFiles
           var i = 2;
           if (conflictResolution == ConflictResolution.SkipIfSame)
           {
-            return files.Where(file => !IsSameFile(file.Key, newFilePath))
+            return files.Where(file => !IsSameFile(file.File.Key, newFilePath))
             .Select(file =>
             {
               while (true)
               {
-                var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
+                var renewedFilePath = Path.Combine(Path.GetDirectoryName(file.NewFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(file.NewFilePath)} ({i++}){Path.GetExtension(file.NewFilePath)}");
                 if (File.Exists(renewedFilePath))
                   continue;
                 else
-                  return new FileAddress(file.Key, renewedFilePath, file.Value);
+                  return new FileAddress(file.File.Key, renewedFilePath, file.File.Value);
               }
             });
           }
@@ -45,11 +49,11 @@ public static partial class GetFiles
             {
               while (true)
               {
-                var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
+                var renewedFilePath = Path.Combine(Path.GetDirectoryName(file.NewFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(file.NewFilePath)} ({i++}){Path.GetExtension(file.NewFilePath)}");
                 if (File.Exists(renewedFilePath))
                   continue;
                 else
-                  return new FileAddress(file.Key, renewedFilePath, file.Value);
+                  return new FileAddress(file.File.Key, renewedFilePath, file.File.Value);
               }
             });
           }
@@ -77,7 +81,7 @@ public static partial class GetFiles
             i = 2;
             foreach (var file in files)
             {
-              var fileName = Path.GetFileName(newFilePath);
+              var fileName = Path.GetFileName(file.NewFilePath);
               var renewedFilePath = Path.Combine(newDirectoryPath, fileName);
               if (filePaths.Contains(renewedFilePath))
                 while (true)
@@ -94,7 +98,7 @@ public static partial class GetFiles
               else
                 filePaths.Add(renewedFilePath);
             }
-            return files.Zip(filePaths, (file, filePath) => new FileAddress(file.Key, filePath, file.Value));
+            return files.Zip(filePaths, (file, filePath) => new FileAddress(file.File.Key, filePath, file.File.Value));
           }
           else if (conflictResolution == ConflictResolution.SkipByDirectory)
           {
@@ -109,7 +113,7 @@ public static partial class GetFiles
           return files.Length switch
           {
             0 => [],
-            1 => files.Select(file => new FileAddress(file.Key, newFilePath, file.Value)),
+            1 => files.Select(file => new FileAddress(file.File.Key, newFilePath, file.File.Value)),
             _ => AddNumber(),
           };
 
@@ -121,16 +125,16 @@ public static partial class GetFiles
               if (i == 1)
               {
                 i++;
-                return new FileAddress(file.Key, newFilePath, file.Value);
+                return new FileAddress(file.File.Key, file.NewFilePath, file.File.Value);
               }
 
               while (true)
               {
-                var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
+                var renewedFilePath = Path.Combine(Path.GetDirectoryName(file.NewFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(file.NewFilePath)} ({i++}){Path.GetExtension(file.NewFilePath)}");
                 if (File.Exists(renewedFilePath))
                   continue;
                 else
-                  return new FileAddress(file.Key, renewedFilePath, file.Value);
+                  return new FileAddress(file.File.Key, renewedFilePath, file.File.Value);
               }
             });
           }

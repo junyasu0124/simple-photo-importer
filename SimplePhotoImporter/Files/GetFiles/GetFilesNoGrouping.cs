@@ -25,12 +25,12 @@ public static partial class GetFiles
           var newFilePath = GenerateNewFilePath(destPaths[destPathsIndex], fileName, file.Value, option, fileNameFormat, customFileNameFormat);
 
           var i = 2;
-          if (willBeAddedFilePath.Any(x => x.NewFilePath == newFilePath))
+          if (willBeAddedFilePath.Any(x => string.Compare(x.NewFilePath, newFilePath, true) == 0))
           {
             while (true)
             {
               var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
-              if (willBeAddedFilePath.Any(x => x.NewFilePath == renewedFilePath))
+              if (willBeAddedFilePath.Any(x => string.Compare(x.NewFilePath, newFilePath, true) == 0))
                 continue;
               else
               {
@@ -51,7 +51,7 @@ public static partial class GetFiles
               while (true)
               {
                 var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
-                if (File.Exists(renewedFilePath) || willBeAddedFilePath.Any(x => x.NewFilePath == renewedFilePath))
+                if (File.Exists(renewedFilePath) || willBeAddedFilePath.Any(x => string.Compare(x.NewFilePath, renewedFilePath, true) == 0))
                   continue;
                 else
                 {
@@ -65,7 +65,7 @@ public static partial class GetFiles
               while (true)
               {
                 var renewedFilePath = Path.Combine(Path.GetDirectoryName(newFilePath) ?? "", $"{Path.GetFileNameWithoutExtension(newFilePath)} ({i++}){Path.GetExtension(newFilePath)}");
-                if (File.Exists(renewedFilePath) || willBeAddedFilePath.Any(x => x.NewFilePath == renewedFilePath))
+                if (File.Exists(renewedFilePath) || willBeAddedFilePath.Any(x => string.Compare(x.NewFilePath, renewedFilePath, true) == 0))
                   continue;
                 else
                 {

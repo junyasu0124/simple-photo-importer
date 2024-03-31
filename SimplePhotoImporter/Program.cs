@@ -3,447 +3,468 @@ using static SimplePhotoImporter.CustomRegexes;
 using static SimplePhotoImporter.Files.Files;
 using static SimplePhotoImporter.Files.GetFiles.GetFiles;
 using static SimplePhotoImporter.Files.Utils.FileUtils;
+using static SimplePhotoImporter.Usage.Usage;
 
 namespace SimplePhotoImporter;
 
-partial class Program
+public partial class Program
 {
   private static void Main(string[] args)
   {
-  START:
-
-    string[] pictureExtensions = [".jpeg", ".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".ico", ".svg", ".heic"];
-    string[] movieExtensions = [".mov", ".mp4", ".m2ts", ".mts", ".avi", ".flv"];
-
-    var version = typeof(Program).Assembly.GetName().Version;
-    Console.WriteLine("Simple Photo Importer v" + version);
-
     if (!OperatingSystem.IsWindows() || Environment.OSVersion.Version.Major < 10)
     {
       Console.Error.WriteLine("Not supported OS.");
       return;
     }
 
-    string[] sourcePaths;
-    string[] excludedSourcePaths;
-    while (true)
-    {
-      Console.WriteLine("Enter the paths to the folder you want to import from. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
-      Console.WriteLine("If you want to exclude a directory, enter the path with a asterisk at the beginning.");
-      Console.WriteLine("e.g. \"C:\\Users\\user\\Pictures Folder\" *\"C:\\Users\\user\\Pictures Folder\\excluded\"");
-      var inputFromPath = Console.ReadLine();
+    var version = typeof(Program).Assembly.GetName().Version;
+    Console.WriteLine("Simple Photo Importer v" + version);
 
-      var (message, paths, excludedPaths) = CheckInputDirectories(inputFromPath, true);
-      if (message != null)
-      {
-        Console.Error.WriteLine(message);
-        continue;
-      }
-      sourcePaths = paths ?? [];
-      excludedSourcePaths = excludedPaths ?? [];
-      break;
-    }
+    string[] pictureExtensions = [".jpeg", ".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".ico", ".svg", ".heic"];
+    string[] movieExtensions = [".mov", ".mp4", ".m2ts", ".mts", ".avi", ".flv"];
 
-    string[] destPaths;
-    while (true)
-    {
-      Console.WriteLine("Enter the paths to the folder you want to import to. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
-      var inputToPath = Console.ReadLine();
+    WayToGetShootingDateTime[] wayToGetShootingDateTime = [WayToGetShootingDateTime.Exif, WayToGetShootingDateTime.MediaCreated, WayToGetShootingDateTime.Creation, WayToGetShootingDateTime.Modified, WayToGetShootingDateTime.Access];
+    
+    var (canContinue, needInteractive, data) = Read(args, pictureExtensions, movieExtensions, wayToGetShootingDateTime);
 
-      var (message, paths, _) = CheckInputDirectories(inputToPath, false);
-      if (message != null)
-      {
-        Console.Error.WriteLine(message);
-        continue;
-      }
-      destPaths = paths ?? [];
-      break;
-    }
+    if (!canContinue)
+      return;
 
-    GroupingMode groupingMode;
-    while (true)
-    {
-      Console.WriteLine("Enter the mode to for grouping files by directory:");
-      Console.WriteLine("1: By none like \\IMG_0001.jpg");
-      Console.WriteLine("2: By year, month, and day like \\2024\\01\\02\\IMG_0001.jpg");
-      Console.WriteLine("3: By year and day like \\2024\\20240102\\IMG_0001.jpg");
-      Console.WriteLine("4: By day like \\20240102\\IMG_0001.jpg");
-      var inputGroupMode = Console.ReadLine();
 
-      if (inputGroupMode == "1")
-      {
-        groupingMode = GroupingMode.NoGrouping;
-        break;
-      }
-      else if (inputGroupMode == "2")
-      {
-        groupingMode = GroupingMode.GroupedByYMD;
-        break;
-      }
-      else if (inputGroupMode == "3")
-      {
-        groupingMode = GroupingMode.GroupedByYD;
-        break;
-      }
-      else if (inputGroupMode == "4")
-      {
-        groupingMode = GroupingMode.GroupedByD;
-        break;
-      }
-      else if (inputGroupMode == null)
-      {
-        continue;
-      }
-      else
-      {
-        Console.Error.WriteLine("Invalid input.");
-      }
-    }
+    string[] sourcePaths = [];
+    string[] excludedSourcePaths = [];
+
+    string[] destPaths = [];
+
+    GroupingMode groupingMode = GroupingMode.NoGrouping;
 
     (FileNameFormat File, DirectoryNameFormatByYMD DirectoryByYMD, DirectoryNameFormatByYD DirectoryByYD, DirectoryNameFormatByD DirectoryByD) nameFormat = (0, 0, 0, 0);
     string? customFileFormat = null;
     (string Year, string Month, string Day)? customDirectoryFormatByYMD = null;
     (string Year, string Day)? customDirectoryFormatByYD = null;
     string? customDirectoryFormatByD = null;
-    while (true)
-    {
-      Console.WriteLine("Enter the format of the file name:");
-      Console.WriteLine("1: Original file name");
-      Console.WriteLine("2: Shooting date time as yyyyMMddHHmmss");
-      Console.WriteLine("3: Shooting date time as yyyy_MM_dd_HH_mm_ss");
-      Console.WriteLine("4: Shooting date time as yyyy-MM-dd-HH-mm-ss");
-      Console.WriteLine("5: Custom format");
-      var inputFileNameFormat = Console.ReadLine();
-      if (string.IsNullOrWhiteSpace(inputFileNameFormat))
-        continue;
-      switch (inputFileNameFormat)
-      {
-        case "1":
-          nameFormat.File = FileNameFormat.OriginalFileName;
-          break;
-        case "2":
-          nameFormat.File = FileNameFormat.ShootingDateTimeNoGrouping;
-          break;
-        case "3":
-          nameFormat.File = FileNameFormat.ShootingDateTimeGroupedByUnderBar;
-          break;
-        case "4":
-          nameFormat.File = FileNameFormat.ShootingDateTimeGroupedByHyphen;
-          break;
-        case "5":
-          nameFormat.File = FileNameFormat.CustomNameFormat;
-          customFileFormat = SetCustomFileFormat();
-          if (customFileFormat == null)
-            return;
-          break;
-        default:
-          Console.Error.WriteLine("Invalid input.");
-          continue;
-      }
-      break;
-    }
-    switch (groupingMode){
-      case GroupingMode.GroupedByYMD:
-        {
-          while (true)
-          {
-            Console.WriteLine("Enter the format of the directory name:");
-            Console.WriteLine("1: Year\\Month\\Day as yyyy\\MM\\dd");
-            Console.WriteLine("2: Custom format");
-            var inputDirectoryNameFormatByYMD = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(inputDirectoryNameFormatByYMD))
-              continue;
-            switch (inputDirectoryNameFormatByYMD)
-            {
-              case "1":
-                nameFormat.DirectoryByYMD = DirectoryNameFormatByYMD.YMDNoSeparation;
-                break;
-              case "2":
-                nameFormat.DirectoryByYMD = DirectoryNameFormatByYMD.CustomNameFormat;
-                customDirectoryFormatByYMD = SetCustomDirectoryFormatByYMD();
-                if (customDirectoryFormatByYMD == null)
-                  return;
-                break;
-              default:
-                Console.Error.WriteLine("Invalid input.");
-                continue;
-            }
-            break;
-          }
-          break;
-        }
-      case GroupingMode.GroupedByYD:
-        {
-          while (true)
-          {
-            Console.WriteLine("Enter the format of the directory name:");
-            Console.WriteLine("1: Year\\YearMonthDay as yyyy\\yyyyMMdd");
-            Console.WriteLine("2: Year\\Year_Month_Day as yyyy\\yyyy_MM_dd");
-            Console.WriteLine("3: Year\\Year-Month-Day as yyyy\\yyyy-MM-dd");
-            Console.WriteLine("4: Year\\MonthDay as yyyy\\MMdd");
-            Console.WriteLine("5: Year\\Month_Day as yyyy\\MM_dd");
-            Console.WriteLine("6: Year\\Month-Day as yyyy\\MM-dd");
-            Console.WriteLine("7: Custom format");
-            var inputDirectoryNameFormatByYD = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(inputDirectoryNameFormatByYD))
-              continue;
-            switch (inputDirectoryNameFormatByYD)
-            {
-              case "1":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YYMDNoSeparation;
-                break;
-              case "2":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YYMDSeparatedByUnderBar;
-                break;
-              case "3":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YYMDSeparatedByHyphen;
-                break;
-              case "4":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YMDNoSeparation;
-                break;
-              case "5":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YMDSeparatedByUnderBar;
-                break;
-              case "6":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YMDSeparatedByHyphen;
-                break;
-              case "7":
-                nameFormat.DirectoryByYD = DirectoryNameFormatByYD.CustomNameFormat;
-                customDirectoryFormatByYD = SetCustomDirectoryFormatByYD();
-                if (customDirectoryFormatByYD == null)
-                  return;
-                break;
-              default:
-                Console.Error.WriteLine("Invalid input.");
-                continue;
-            }
-            break;
-          }
-          break;
-        }
-      case GroupingMode.GroupedByD:
-        {
-          while (true)
-          {
-            Console.WriteLine("Enter the format of the directory name:");
-            Console.WriteLine("1: YearMonthDay as yyyyMMdd");
-            Console.WriteLine("2: Year_Month_Day as yyyy_MM_dd");
-            Console.WriteLine("3: Year-Month-Day as yyyy-MM-dd");
-            Console.WriteLine("4: Custom format");
-            var inputDirectoryNameFormatByD = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(inputDirectoryNameFormatByD))
-              continue;
-            switch (inputDirectoryNameFormatByD)
-            {
-              case "1":
-                nameFormat.DirectoryByD = DirectoryNameFormatByD.YMDNoSeparation;
-                break;
-              case "2":
-                nameFormat.DirectoryByD = DirectoryNameFormatByD.YMDSeparatedByUnderBar;
-                break;
-              case "3":
-                nameFormat.DirectoryByD = DirectoryNameFormatByD.YMDSeparatedByHyphen;
-                break;
-              case "4":
-                nameFormat.DirectoryByD = DirectoryNameFormatByD.CustomNameFormat;
-                customDirectoryFormatByD = SetCustomDirectoryFormatByDay();
-                if (customDirectoryFormatByD == null)
-                  return;
-                break;
-              default:
-                Console.Error.WriteLine("Invalid input.");
-                continue;
-            }
-            break;
-          }
-          break;
-        }
-    }
 
     ConflictResolution conflictResolution = ConflictResolution.AddNumber;
-    var isEnabledAddNumberToDirectory = groupingMode != GroupingMode.NoGrouping;
-    while (true)
-    {
-      Console.WriteLine("Enter the conflict resolution. (It will be applied only to files that existed before importing. If multiple files with the same name are created in the same directory, a number will be added to the file name):");
-      Console.WriteLine("1: Skip if the contents are the same, otherwise, add a number to the file name. (Recommended)");
-      Console.WriteLine("2: Skip");
-      Console.WriteLine("3: Skip by directory (All files which will be copied to the same directory will be skipped)");
-      Console.WriteLine("4: Add a number to the file name");
-      if (isEnabledAddNumberToDirectory)
-      {
-        var addNumberDescription = "";
-        if (groupingMode == GroupingMode.GroupedByYMD)
-        {
-          if (nameFormat.DirectoryByYMD == DirectoryNameFormatByYMD.CustomNameFormat && customDirectoryFormatByYMD != null)
-            addNumberDescription = $". e.g. {customDirectoryFormatByYMD.Value.Year}\\{customDirectoryFormatByYMD.Value.Month}\\{customDirectoryFormatByYMD.Value.Day} (2)";
-          addNumberDescription = ". e.g. yyyy\\MM\\dd (2)";
-        }
-        else if (groupingMode == GroupingMode.GroupedByYD)
-        {
-          if (nameFormat.DirectoryByYD == DirectoryNameFormatByYD.CustomNameFormat && customDirectoryFormatByYD != null)
-            addNumberDescription = $". e.g. {customDirectoryFormatByYD.Value.Year}\\{customDirectoryFormatByYD.Value.Day} (2)";
-          addNumberDescription = ". e.g. yyyy\\yyyyMMdd (2)";
-        }
-        Console.WriteLine("5: Make a new directory having name with a number and add files to the directory" + addNumberDescription);
-      }
-      var inputConflictResolution = Console.ReadLine();
-      if (string.IsNullOrWhiteSpace(inputConflictResolution))
-        continue;
-      switch (inputConflictResolution)
-      {
-        case "1":
-          conflictResolution = ConflictResolution.SkipIfSame;
-          break;
-        case "2":
-          conflictResolution = ConflictResolution.Skip;
-          break;
-        case "3":
-          conflictResolution = ConflictResolution.SkipByDirectory;
-          break;
-        case "4":
-          conflictResolution = ConflictResolution.AddNumber;
-          break;
-        case "5":
-          if (isEnabledAddNumberToDirectory)
-            conflictResolution = ConflictResolution.AddNumberToDirectory;
-          else
-          {
-            Console.Error.WriteLine("Invalid input.");
-            continue;
-          }
-          break;
-        default:
-          Console.Error.WriteLine("Invalid input.");
-          continue;
-      }
-      break;
-    }
 
     ImportOption option = 0;
-    while (true)
-    {
-      Console.WriteLine("Enter the options you want to enable. You can enter multiple options by separating them with a space:");
-      Console.WriteLine("1: Move instead of copy");
-      Console.WriteLine("2: Make the extension lower case");
-      Console.WriteLine("3: Make the extension upper case");
-      Console.WriteLine("4: Add custom picture extension");
-      Console.WriteLine("5: Add custom movie extension");
-      Console.WriteLine("6: Change the way to get shooting date time");
-      Console.WriteLine("7: Use a single thread");
-      Console.WriteLine("Enter nothing to finish");
-      var inputOption = Console.ReadLine();
 
-      if (string.IsNullOrWhiteSpace(inputOption))
-        break;
-      var options = inputOption.Split(' ');
-      option = 0;
-      var invalid = false;
-      if (options.Length != options.Distinct().Count())
-      {
-        Console.Error.WriteLine("You can't specify the same option multiple times.");
-      }
-      foreach (var opt in options)
-      {
-        if (opt == "1")
-          option |= ImportOption.Move;
-        else if (opt == "2")
-          option |= ImportOption.MakeExtensionLower;
-        else if (opt == "3")
-          option |= ImportOption.MakeExtensionUpper;
-        else if (opt == "4")
-          option |= ImportOption.AddCustomPictureExtension;
-        else if (opt == "5")
-          option |= ImportOption.AddCustomMovieExtension;
-        else if (opt == "6")
-          option |= ImportOption.ChangeWayToGetShootingDateTime;
-        else if (opt == "7")
-          option |= ImportOption.UseASingleThread;
-        else
-        {
-          Console.Error.WriteLine("Invalid input.");
-          invalid = true;
-          break;
-        }
-      }
-      if (invalid)
-        continue;
-      if (option.HasFlag(ImportOption.MakeExtensionLower) && option.HasFlag(ImportOption.MakeExtensionUpper))
-      {
-        Console.Error.WriteLine("You can't specify both 3 and 4.");
-        continue;
-      }
-      break;
+    if (data != null && !needInteractive)
+    {
+      (sourcePaths, excludedSourcePaths, destPaths, groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, pictureExtensions, movieExtensions, wayToGetShootingDateTime) = data.Value;
     }
 
-    if (option.HasFlag(ImportOption.AddCustomPictureExtension))
-    {
-      Console.WriteLine("""Enter the custom picture extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default picture extensions, enter ":remove" and the custom extensions you want to use.""");
-      Console.WriteLine($"Default picture extensions: {string.Join(' ', pictureExtensions)}");
-      var customPictureExtension = Console.ReadLine();
-      if (customPictureExtension != null)
-      {
-        var entereds = customPictureExtension.Split(' ').ToList();
-        if (entereds.Contains(":remove"))
-        {
-          pictureExtensions = [];
-          entereds.Remove(":remove");
-        }
-        var customPictureExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
-        pictureExtensions = [.. pictureExtensions, .. customPictureExtensions];
-      }
-    }
-    if (option.HasFlag(ImportOption.AddCustomMovieExtension))
-    {
-      Console.WriteLine("""Enter the custom movie extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default movie extensions, enter ":remove" and the custom extensions you want to use.""");
-      Console.WriteLine($"Default movie extensions: {string.Join(' ', movieExtensions)}");
-      var customMovieExtension = Console.ReadLine();
-      if (customMovieExtension != null)
-      {
-        var entereds = customMovieExtension.Split(' ').ToList();
-        if (entereds.Contains(":remove"))
-        {
-          movieExtensions = [];
-          entereds.Remove(":remove");
-        }
-        var customMovieExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
-        movieExtensions = [.. movieExtensions, .. customMovieExtensions];
-      }
-    }
-
-    WayToGetShootingDateTime[] wayToGetShootingDateTime = [WayToGetShootingDateTime.Exif, WayToGetShootingDateTime.MediaCreated, WayToGetShootingDateTime.Creation, WayToGetShootingDateTime.Modified, WayToGetShootingDateTime.Access];
-    if (option.HasFlag(ImportOption.ChangeWayToGetShootingDateTime))
+    if (needInteractive)
     {
       while (true)
       {
-        Console.WriteLine("Sort the following in order of priority to get the shooting date time and enter the numbers separated by a space:");
-        Console.WriteLine("1: Exif (Only for pictures)");
-        Console.WriteLine("2: Media created (Only for movies. Media created doesn't include seconds, so if Media created and Creation or Modified are close, use Creation or Modified, otherwise use 0");
-        Console.WriteLine("3: Creation");
-        Console.WriteLine("4: Modified");
-        Console.WriteLine("5: Access");
-        Console.WriteLine("Default: Exif -> Media created -> Creation -> Modified -> Access");
-        var inputWayToGetShootingDateTime = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(inputWayToGetShootingDateTime))
-          continue;
-        var ways = inputWayToGetShootingDateTime.Split(' ');
-        if (ways.Length != 5 || MatchNotWayToGetShootingDateTime().IsMatch(inputWayToGetShootingDateTime) || ways.Distinct().Count() != 5)
+        Console.WriteLine("Enter the paths to the folder you want to import from. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
+        Console.WriteLine("If you want to exclude a directory, enter the path with a asterisk at the beginning.");
+        Console.WriteLine("e.g. \"C:\\Users\\user\\Pictures Folder\" *\"C:\\Users\\user\\Pictures Folder\\excluded\"");
+        var inputFromPath = Console.ReadLine();
+
+        var (message, paths, excludedPaths) = CheckInputDirectories(inputFromPath, true);
+        if (message != null)
         {
-          Console.Error.WriteLine("You must specify all options.");
+          Console.Error.WriteLine(message);
           continue;
         }
-        for (int i = 0; i < ways.Length; i++)
+        sourcePaths = paths ?? [];
+        excludedSourcePaths = excludedPaths ?? [];
+        break;
+      }
+
+      while (true)
+      {
+        Console.WriteLine("Enter the paths to the folder you want to import to. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
+        var inputToPath = Console.ReadLine();
+
+        var (message, paths, _) = CheckInputDirectories(inputToPath, false);
+        if (message != null)
         {
-          wayToGetShootingDateTime[i] = ways[i] switch
-          {
-            "1" => WayToGetShootingDateTime.Exif,
-            "2" => WayToGetShootingDateTime.MediaCreated,
-            "3" => WayToGetShootingDateTime.Creation,
-            "4" => WayToGetShootingDateTime.Modified,
-            "5" => WayToGetShootingDateTime.Access,
-            _ => throw new InvalidOperationException(),
-          };
+          Console.Error.WriteLine(message);
+          continue;
+        }
+        destPaths = paths ?? [];
+        break;
+      }
+
+      while (true)
+      {
+        Console.WriteLine("Enter the mode to for grouping files by directory:");
+        Console.WriteLine("1: No grouping like \\IMG_0001.jpg");
+        Console.WriteLine("2: By year, month, and day like \\2024\\01\\02\\IMG_0001.jpg");
+        Console.WriteLine("3: By year and day like \\2024\\20240102\\IMG_0001.jpg");
+        Console.WriteLine("4: By day like \\20240102\\IMG_0001.jpg");
+        var inputGroupMode = Console.ReadLine();
+
+        if (inputGroupMode == "1")
+        {
+          groupingMode = GroupingMode.NoGrouping;
+          break;
+        }
+        else if (inputGroupMode == "2")
+        {
+          groupingMode = GroupingMode.GroupedByYMD;
+          break;
+        }
+        else if (inputGroupMode == "3")
+        {
+          groupingMode = GroupingMode.GroupedByYD;
+          break;
+        }
+        else if (inputGroupMode == "4")
+        {
+          groupingMode = GroupingMode.GroupedByD;
+          break;
+        }
+        else if (inputGroupMode == null)
+        {
+          continue;
+        }
+        else
+        {
+          Console.Error.WriteLine("Invalid input.");
+        }
+      }
+
+      while (true)
+      {
+        Console.WriteLine("Enter the format of the file name:");
+        Console.WriteLine("1: Original file name");
+        Console.WriteLine("2: Shooting date time as yyyyMMddHHmmss");
+        Console.WriteLine("3: Shooting date time as yyyy_MM_dd_HH_mm_ss");
+        Console.WriteLine("4: Shooting date time as yyyy-MM-dd-HH-mm-ss");
+        Console.WriteLine("5: Custom format");
+        var inputFileNameFormat = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(inputFileNameFormat))
+          continue;
+        switch (inputFileNameFormat)
+        {
+          case "1":
+            nameFormat.File = FileNameFormat.OriginalFileName;
+            break;
+          case "2":
+            nameFormat.File = FileNameFormat.ShootingDateTimeNoGrouping;
+            break;
+          case "3":
+            nameFormat.File = FileNameFormat.ShootingDateTimeGroupedByUnderBar;
+            break;
+          case "4":
+            nameFormat.File = FileNameFormat.ShootingDateTimeGroupedByHyphen;
+            break;
+          case "5":
+            nameFormat.File = FileNameFormat.CustomNameFormat;
+            customFileFormat = SetCustomFileFormat();
+            if (customFileFormat == null)
+              return;
+            break;
+          default:
+            Console.Error.WriteLine("Invalid input.");
+            continue;
         }
         break;
+      }
+      switch (groupingMode)
+      {
+        case GroupingMode.GroupedByYMD:
+          {
+            while (true)
+            {
+              Console.WriteLine("Enter the format of the directory name:");
+              Console.WriteLine("1: Year\\Month\\Day as yyyy\\MM\\dd");
+              Console.WriteLine("2: Custom format");
+              var inputDirectoryNameFormatByYMD = Console.ReadLine();
+              if (string.IsNullOrWhiteSpace(inputDirectoryNameFormatByYMD))
+                continue;
+              switch (inputDirectoryNameFormatByYMD)
+              {
+                case "1":
+                  nameFormat.DirectoryByYMD = DirectoryNameFormatByYMD.YMDNoSeparation;
+                  break;
+                case "2":
+                  nameFormat.DirectoryByYMD = DirectoryNameFormatByYMD.CustomNameFormat;
+                  customDirectoryFormatByYMD = SetCustomDirectoryFormatByYMD();
+                  if (customDirectoryFormatByYMD == null)
+                    return;
+                  break;
+                default:
+                  Console.Error.WriteLine("Invalid input.");
+                  continue;
+              }
+              break;
+            }
+            break;
+          }
+        case GroupingMode.GroupedByYD:
+          {
+            while (true)
+            {
+              Console.WriteLine("Enter the format of the directory name:");
+              Console.WriteLine("1: Year\\YearMonthDay as yyyy\\yyyyMMdd");
+              Console.WriteLine("2: Year\\Year_Month_Day as yyyy\\yyyy_MM_dd");
+              Console.WriteLine("3: Year\\Year-Month-Day as yyyy\\yyyy-MM-dd");
+              Console.WriteLine("4: Year\\MonthDay as yyyy\\MMdd");
+              Console.WriteLine("5: Year\\Month_Day as yyyy\\MM_dd");
+              Console.WriteLine("6: Year\\Month-Day as yyyy\\MM-dd");
+              Console.WriteLine("7: Custom format");
+              var inputDirectoryNameFormatByYD = Console.ReadLine();
+              if (string.IsNullOrWhiteSpace(inputDirectoryNameFormatByYD))
+                continue;
+              switch (inputDirectoryNameFormatByYD)
+              {
+                case "1":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YYMDNoSeparation;
+                  break;
+                case "2":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YYMDSeparatedByUnderBar;
+                  break;
+                case "3":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YYMDSeparatedByHyphen;
+                  break;
+                case "4":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YMDNoSeparation;
+                  break;
+                case "5":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YMDSeparatedByUnderBar;
+                  break;
+                case "6":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.YMDSeparatedByHyphen;
+                  break;
+                case "7":
+                  nameFormat.DirectoryByYD = DirectoryNameFormatByYD.CustomNameFormat;
+                  customDirectoryFormatByYD = SetCustomDirectoryFormatByYD();
+                  if (customDirectoryFormatByYD == null)
+                    return;
+                  break;
+                default:
+                  Console.Error.WriteLine("Invalid input.");
+                  continue;
+              }
+              break;
+            }
+            break;
+          }
+        case GroupingMode.GroupedByD:
+          {
+            while (true)
+            {
+              Console.WriteLine("Enter the format of the directory name:");
+              Console.WriteLine("1: YearMonthDay as yyyyMMdd");
+              Console.WriteLine("2: Year_Month_Day as yyyy_MM_dd");
+              Console.WriteLine("3: Year-Month-Day as yyyy-MM-dd");
+              Console.WriteLine("4: Custom format");
+              var inputDirectoryNameFormatByD = Console.ReadLine();
+              if (string.IsNullOrWhiteSpace(inputDirectoryNameFormatByD))
+                continue;
+              switch (inputDirectoryNameFormatByD)
+              {
+                case "1":
+                  nameFormat.DirectoryByD = DirectoryNameFormatByD.YMDNoSeparation;
+                  break;
+                case "2":
+                  nameFormat.DirectoryByD = DirectoryNameFormatByD.YMDSeparatedByUnderBar;
+                  break;
+                case "3":
+                  nameFormat.DirectoryByD = DirectoryNameFormatByD.YMDSeparatedByHyphen;
+                  break;
+                case "4":
+                  nameFormat.DirectoryByD = DirectoryNameFormatByD.CustomNameFormat;
+                  customDirectoryFormatByD = SetCustomDirectoryFormatByDay();
+                  if (customDirectoryFormatByD == null)
+                    return;
+                  break;
+                default:
+                  Console.Error.WriteLine("Invalid input.");
+                  continue;
+              }
+              break;
+            }
+            break;
+          }
+      }
+
+      var isEnabledAddNumberToDirectory = groupingMode != GroupingMode.NoGrouping;
+      while (true)
+      {
+        Console.WriteLine("Enter the conflict resolution. (It will be applied only to files that existed before importing. If multiple files with the same name are created in the same directory, a number will be added to the file name):");
+        Console.WriteLine("1: Skip if the contents are the same, otherwise, add a number to the file name. (Recommended)");
+        Console.WriteLine("2: Skip");
+        Console.WriteLine("3: Skip by directory (All files which will be copied to the same directory will be skipped)");
+        Console.WriteLine("4: Add a number to the file name");
+        if (isEnabledAddNumberToDirectory)
+        {
+          var addNumberDescription = "";
+          if (groupingMode == GroupingMode.GroupedByYMD)
+          {
+            if (nameFormat.DirectoryByYMD == DirectoryNameFormatByYMD.CustomNameFormat && customDirectoryFormatByYMD != null)
+              addNumberDescription = $". e.g. {customDirectoryFormatByYMD.Value.Year}\\{customDirectoryFormatByYMD.Value.Month}\\{customDirectoryFormatByYMD.Value.Day} (2)";
+            addNumberDescription = ". e.g. yyyy\\MM\\dd (2)";
+          }
+          else if (groupingMode == GroupingMode.GroupedByYD)
+          {
+            if (nameFormat.DirectoryByYD == DirectoryNameFormatByYD.CustomNameFormat && customDirectoryFormatByYD != null)
+              addNumberDescription = $". e.g. {customDirectoryFormatByYD.Value.Year}\\{customDirectoryFormatByYD.Value.Day} (2)";
+            addNumberDescription = ". e.g. yyyy\\yyyyMMdd (2)";
+          }
+          Console.WriteLine("5: Make a new directory having name with a number and add files to the directory" + addNumberDescription);
+        }
+        var inputConflictResolution = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(inputConflictResolution))
+          continue;
+        switch (inputConflictResolution)
+        {
+          case "1":
+            conflictResolution = ConflictResolution.SkipIfSame;
+            break;
+          case "2":
+            conflictResolution = ConflictResolution.Skip;
+            break;
+          case "3":
+            conflictResolution = ConflictResolution.SkipByDirectory;
+            break;
+          case "4":
+            conflictResolution = ConflictResolution.AddNumber;
+            break;
+          case "5":
+            if (isEnabledAddNumberToDirectory)
+              conflictResolution = ConflictResolution.AddNumberToDirectory;
+            else
+            {
+              Console.Error.WriteLine("Invalid input.");
+              continue;
+            }
+            break;
+          default:
+            Console.Error.WriteLine("Invalid input.");
+            continue;
+        }
+        break;
+      }
+
+      while (true)
+      {
+        Console.WriteLine("Enter the options you want to enable. You can enter multiple options by separating them with a space:");
+        Console.WriteLine("1: Move instead of copy");
+        Console.WriteLine("2: Make the extension lower case");
+        Console.WriteLine("3: Make the extension upper case");
+        Console.WriteLine("4: Add custom picture extension");
+        Console.WriteLine("5: Add custom movie extension");
+        Console.WriteLine("6: Change priority of the way to get shooting date time");
+        Console.WriteLine("7: Use a single thread");
+        Console.WriteLine("Enter nothing to finish");
+        var inputOption = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(inputOption))
+          break;
+        var options = inputOption.Split(' ');
+        option = 0;
+        var invalid = false;
+        if (options.Length != options.Distinct().Count())
+        {
+          Console.Error.WriteLine("You can't specify the same option multiple times.");
+        }
+        foreach (var opt in options)
+        {
+          if (opt == "1")
+            option |= ImportOption.Move;
+          else if (opt == "2")
+            option |= ImportOption.MakeExtensionLower;
+          else if (opt == "3")
+            option |= ImportOption.MakeExtensionUpper;
+          else if (opt == "4")
+            option |= ImportOption.AddCustomPictureExtension;
+          else if (opt == "5")
+            option |= ImportOption.AddCustomMovieExtension;
+          else if (opt == "6")
+            option |= ImportOption.ChangeDateInfoPriority;
+          else if (opt == "7")
+            option |= ImportOption.UseASingleThread;
+          else
+          {
+            Console.Error.WriteLine("Invalid input.");
+            invalid = true;
+            break;
+          }
+        }
+        if (invalid)
+          continue;
+        if (option.HasFlag(ImportOption.MakeExtensionLower) && option.HasFlag(ImportOption.MakeExtensionUpper))
+        {
+          Console.Error.WriteLine("You can't specify both 3 and 4.");
+          continue;
+        }
+        break;
+      }
+
+      if (option.HasFlag(ImportOption.AddCustomPictureExtension))
+      {
+        Console.WriteLine("""Enter the custom picture extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default picture extensions, enter ":remove" and the custom extensions you want to use.""");
+        Console.WriteLine($"Default picture extensions: {string.Join(' ', pictureExtensions)}");
+        var customPictureExtension = Console.ReadLine();
+        if (customPictureExtension != null)
+        {
+          var entereds = customPictureExtension.Split(' ').ToList();
+          if (entereds.Contains(":remove"))
+          {
+            pictureExtensions = [];
+            entereds.Remove(":remove");
+          }
+          var customPictureExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
+          pictureExtensions = [.. pictureExtensions, .. customPictureExtensions];
+        }
+      }
+      if (option.HasFlag(ImportOption.AddCustomMovieExtension))
+      {
+        Console.WriteLine("""Enter the custom movie extensions you want to add. You can enter multiple extensions by separating them with a space. If you want to remove the default movie extensions, enter ":remove" and the custom extensions you want to use.""");
+        Console.WriteLine($"Default movie extensions: {string.Join(' ', movieExtensions)}");
+        var customMovieExtension = Console.ReadLine();
+        if (customMovieExtension != null)
+        {
+          var entereds = customMovieExtension.Split(' ').ToList();
+          if (entereds.Contains(":remove"))
+          {
+            movieExtensions = [];
+            entereds.Remove(":remove");
+          }
+          var customMovieExtensions = entereds.Select(x => x.ToLower()).Select(x => x.StartsWith('.') ? x : "." + x);
+          movieExtensions = [.. movieExtensions, .. customMovieExtensions];
+        }
+      }
+
+      if (option.HasFlag(ImportOption.ChangeDateInfoPriority))
+      {
+        while (true)
+        {
+          Console.WriteLine("Sort the following in order of priority to get the shooting date time and enter the numbers separated by a space:");
+          Console.WriteLine("1: Exif (Only for pictures)");
+          Console.WriteLine("2: Media created (Only for movies. Media created doesn't include seconds, so if Media created and Creation or Modified are close, use Creation or Modified, otherwise use 0");
+          Console.WriteLine("3: Creation");
+          Console.WriteLine("4: Modified");
+          Console.WriteLine("5: Access");
+          Console.WriteLine("Default: Exif -> Media created -> Creation -> Modified -> Access");
+          var inputWayToGetShootingDateTime = Console.ReadLine();
+          if (string.IsNullOrWhiteSpace(inputWayToGetShootingDateTime))
+            continue;
+          var ways = inputWayToGetShootingDateTime.Split(' ');
+          if (ways.Length != 5 || MatchNotWayToGetShootingDateTime().IsMatch(inputWayToGetShootingDateTime) || ways.Distinct().Count() != 5)
+          {
+            Console.Error.WriteLine("You must specify all options.");
+            continue;
+          }
+          for (int i = 0; i < ways.Length; i++)
+          {
+            wayToGetShootingDateTime[i] = ways[i] switch
+            {
+              "1" => WayToGetShootingDateTime.Exif,
+              "2" => WayToGetShootingDateTime.MediaCreated,
+              "3" => WayToGetShootingDateTime.Creation,
+              "4" => WayToGetShootingDateTime.Modified,
+              "5" => WayToGetShootingDateTime.Access,
+              _ => throw new InvalidOperationException(),
+            };
+          }
+          break;
+        }
       }
     }
 
@@ -472,7 +493,5 @@ partial class Program
     }, threadCount);
     progress.Done("Done");
     Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalMilliseconds)} ms");
-
-    goto START;
   }
 }

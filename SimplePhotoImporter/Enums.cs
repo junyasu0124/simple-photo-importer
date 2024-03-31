@@ -77,7 +77,7 @@ public enum ImportOption
   MakeExtensionUpper = 4,
   AddCustomPictureExtension = 8,
   AddCustomMovieExtension = 16,
-  ChangeWayToGetShootingDateTime = 32,
+  ChangeDateInfoPriority = 32,
   UseASingleThread = 128,
 }
 

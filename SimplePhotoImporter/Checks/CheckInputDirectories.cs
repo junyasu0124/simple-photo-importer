@@ -10,7 +10,7 @@ public static partial class Checks
     }
     else
     {
-      var inputPaths = CustomRegexes.MatchInputPahts().Matches(input).Select(x => x.Value.ToLower().Trim('"').Trim('\\')).ToArray();
+      var inputPaths = CustomRegexes.MatchInputPahts().Matches(input).Select(x => x.Value.ToLower().Trim().Trim('"').Trim('\\')).ToArray();
 
       if (inputPaths.Length == 0)
       {
