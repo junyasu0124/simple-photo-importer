@@ -3,7 +3,7 @@
 Simple Photo Importer is a CLI tool that helps you to import photos and videos. With this tool, you can separate files by date, rename files, and copy them to a destination folder. You can also copy from multiple folders to multiple destination folders.
 
 ## Installation
-Just download [THIS FILE](https://github.com/junyasu0124/simple-photo-importer/blob/master/SimplePhotoImporter/Exe/SimplePhotoImporter.exe)
+Just download [THIS FILE](SimplePhotoImporter/Exe/SimplePhotoImporter.exe)
 
 ## Usage
 
@@ -57,7 +57,7 @@ SimplePhotoImporter [--source-paths=...] [--dest-paths] ([--grouping-mode=...]) 
 
 ## License
 
-This software is released under the MIT License, see LICENSE.txt.
+This software is released under the MIT License, see [LICENSE.txt](LICENSE.txt).
 
 ## Author
 
