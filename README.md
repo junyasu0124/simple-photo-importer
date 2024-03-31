@@ -55,6 +55,14 @@ SimplePhotoImporter [--source-paths=...] [--dest-paths] ([--grouping-mode=...]) 
 | --date-info-priority | Change priority of the way to get shooting date time. **1**: Exif, **2**: Media created, **3**: Creation, **4**: Modified, **5**: Access  You must specify all values separated by a space. |
 | --single-thread | Use a single thread |
 
-### License
+## License
 
 This software is released under the MIT License, see LICENSE.txt.
+
+## Author
+
+[junyasu0124](https://github.com/junyasu0124)
+
+## Note
+
+Please report any issues or requests on [GitHub's Issues page](https://github.com/junyasu0124/simple-photo-importer/issues). Thank you!
