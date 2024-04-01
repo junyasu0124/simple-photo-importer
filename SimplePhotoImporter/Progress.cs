@@ -1,16 +1,44 @@
 ﻿namespace SimplePhotoImporter;
 
-public class Progress(int width, int total)
+public class ProgressBar
 {
-  public int columns = Console.WindowWidth;
-  public int width = width;
-  public int current = 0;
-  public int total = total;
-  private int rowLate = Console.CursorTop;
+  private readonly int width;
+  private readonly int total;
+  private int current = 0;
+  private readonly int firstCursorTop;
+  private int textCursorTop;
+  private readonly int maxTextLength;
 
-  public void Update(string message)
+  public ProgressBar(int width, int total)
   {
-    int row0 = Console.CursorTop;
+    this.width = width;
+    this.total = total;
+    firstCursorTop = Console.CursorTop;
+    textCursorTop = firstCursorTop + 1;
+    // "#[" + "<"*width + "]#" + "(100.0%<-100/100)"
+    maxTextLength = width + 4 + 11 + total.ToString().Length * 2;
+
+    Console.CursorVisible = false;
+
+    Update(0);
+  }
+
+  public void Update()
+  {
+    Update(++current);
+  }
+  public void Update(int current)
+  {
+    Update(current, string.Empty);
+  }
+  public void Update(string text)
+  {
+    Update(++current, text);
+  }
+
+  public void Update(int current, string text)
+  {
+    this.current = current;
 
     float parcent = (float)current / total;
     int widthNow = (int)Math.Floor(width * parcent);
@@ -18,30 +46,33 @@ public class Progress(int width, int total)
     string gauge = new string('>', widthNow) + new string(' ', width - widthNow);
     string status = $"({parcent * 100:f1}%<-{current}/{total})";
 
-    Console.WriteLine($"#[{gauge}]#{status}");
-    ClearScreenDown();
+    Console.SetCursorPosition(0, firstCursorTop);
+    Console.WriteLine($"#[{gauge}]#{status}".PadRight(maxTextLength, ' '));
+    //cursorTop--;
 
-    Console.WriteLine(message);
-    rowLate = Console.CursorTop;
-    Console.SetCursorPosition(0, row0);
-    current++;
+    if (!string.IsNullOrEmpty(text))
+      WriteText(text);
   }
 
-  public void Done(string doneAlert)
+  public void Done()
   {
-    int sideLen = (int)Math.Floor((float)(width - doneAlert.Length) / 2);
+    const string MESSAGE = "Done";
 
-    string gauge = new string('=', sideLen) + doneAlert;
+    int sideLen = (int)Math.Floor((float)(width - MESSAGE.Length) / 2);
+    string gauge = new string('=', sideLen) + MESSAGE;
     gauge += new string('=', width - gauge.Length);
-    string status = $"(100%<-{total}/{total})";
+    string status = $"(100.0%<-{total}/{total})";
 
-    Console.WriteLine($"#[{gauge}]#{status}");
+    Console.SetCursorPosition(0, firstCursorTop);
+    Console.WriteLine($"#[{gauge}]#{status} ".PadRight(maxTextLength, ' '));
+
+    Console.SetCursorPosition(0, textCursorTop);
+    Console.CursorVisible = true;
   }
 
-  private void ClearScreenDown()
+  public void WriteText(string text)
   {
-    int clearRange = rowLate - (Console.CursorTop - 1);
-    Console.Write(new string(' ', columns * clearRange));
-    Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - clearRange);
+    Console.SetCursorPosition(0, textCursorTop++);
+    Console.WriteLine(text);
   }
 }

@@ -2,32 +2,33 @@
 
 public static partial class Files
 {
-  public static void CopyFile(FileAddress file, ImportOption option)
+  public static string CopyFile(FileAddress file, ImportOption option, ProgressBar progressBar)
   {
+    var copyOrMove = option.HasFlag(ImportOption.Move) ? "move" : "copy";
     if (File.Exists(file.DestFilePath))
     {
-      DisplayFailed();
-      return;
+      return $"Failed to {copyOrMove} {file.SourceFilePath} to {file.DestFilePath}: The file already exists.";
     }
     try
     {
       if (option.HasFlag(ImportOption.Move))
+      {
         File.Move(file.SourceFilePath, file.DestFilePath, false);
+        return $"Moved {file.SourceFilePath} to {file.DestFilePath}";
+      }
       else
+      {
         File.Copy(file.SourceFilePath, file.DestFilePath, false);
+        return $"Copied {file.SourceFilePath} to {file.DestFilePath}";
+      }
     }
     catch (IOException)
     {
-      DisplayFailed();
+      return $"Failed to {copyOrMove} {file.SourceFilePath} to {file.DestFilePath}: The file already exists.";
     }
     catch (Exception e)
     {
-      Console.Error.WriteLine($"Failed to copy {file.SourceFilePath} to {file.DestFilePath}: {e.Message}");
-    }
-
-    void DisplayFailed()
-    {
-      Console.Error.WriteLine($"Failed to copy {file.SourceFilePath} to {file.DestFilePath}: The file already exists.");
+      return $"Failed to {copyOrMove} {file.SourceFilePath} to {file.DestFilePath}: {e.Message}";
     }
   }
 }

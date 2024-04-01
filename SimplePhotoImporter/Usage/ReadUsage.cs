@@ -43,9 +43,10 @@ public static partial class Usage
       "--custom-video-extension=",
       "--date-info-priority=",
       "--single-thread",
+      "--log"
     ];
 
-    if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h"))
+    if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "-H"))
     {
       Write(
         [
@@ -80,12 +81,13 @@ public static partial class Usage
               new UsageChildren($"{options[4]}...", "Add custom video extension (e.g. --custom-video-extension=:remove(<-Remove the default extensions) .video)"),
               new UsageChildren($"{options[5]}...", "Change priority of the way to get shooting date time. 1: Exif, 2: Media created, 3: Creation, 4: Modified, 5: Access  You must specify all values separated by a space."),
               new UsageChildren(options[6], "Use a single thread"),
+              new UsageChildren(options[7], "Output log")
             ]
           ),
         ]);
       return (false, false, null);
     }
-    else if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v"))
+    else if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v" || args[0] == "-V"))
     {
       var version = typeof(Program).Assembly.GetName().Version;
       Console.WriteLine("Simple Photo Importer v" + version);
@@ -171,9 +173,9 @@ public static partial class Usage
         {
           var inputGroupingMode = args[i].Replace(arguments[2], "") switch
           {
-            "2" or "y\\M\\d" => GroupingMode.GroupedByYMD,
-            "3" or "y\\d" => GroupingMode.GroupedByYD,
-            "4" or "d" => GroupingMode.GroupedByD,
+            "2" or "y\\M\\d" or "y\\m\\d" or "Y\\M\\D" => GroupingMode.GroupedByYMD,
+            "3" or "y\\d" or "Y\\D" => GroupingMode.GroupedByYD,
+            "4" or "d" or "D" => GroupingMode.GroupedByD,
             var other => CheckOther(other),
           };
           static GroupingMode? CheckOther(string other)
@@ -408,6 +410,11 @@ public static partial class Usage
         else if (args[i].StartsWith(options[6]))
         {
           option |= ImportOption.UseASingleThread;
+        }
+        // --log
+        else if (args[i].StartsWith(options[7]))
+        {
+          option |= ImportOption.Log;
         }
         else
         {

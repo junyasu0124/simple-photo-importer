@@ -353,6 +353,7 @@ public partial class Program
         Console.WriteLine("5: Add custom video extension");
         Console.WriteLine("6: Change priority of the way to get shooting date time");
         Console.WriteLine("7: Use a single thread");
+        Console.WriteLine("8: Output log");
         Console.WriteLine("Enter nothing to finish");
         var inputOption = Console.ReadLine();
 
@@ -381,6 +382,8 @@ public partial class Program
             option |= ImportOption.ChangeDateInfoPriority;
           else if (opt == "7")
             option |= ImportOption.UseASingleThread;
+          else if (opt == "8")
+            option |= ImportOption.Log;
           else
           {
             Console.Error.WriteLine("Invalid input.");
@@ -484,20 +487,40 @@ public partial class Program
       _ => throw new InvalidOperationException(),
     };
 
-    Console.WriteLine($"Found {files.Length} files.");
-
-    Console.WriteLine("Creating directories...");
-    GetDirectoriesFromFiles(files.Select(x => x.DestFilePath)).ForEach(directoryPath => Directory.CreateDirectory(directoryPath));
-
-    var progress = new Progress(50, files.Length);
-    files.AsParallelOrSingleAndForAll(file =>
+    if (files.Length <= 0)
     {
-      CopyFile(file, option);
-      lock (progress)
-        progress.Update("");
-    }, threadCount);
-    progress.Done("Done");
+      Console.WriteLine("No files found.");
+    }
+    else
+    {
+      Console.WriteLine($"Found {files.Length} files.");
+
+      Console.WriteLine("Creating directories...");
+      GetDirectoriesFromFiles(files.Select(x => x.DestFilePath)).ForEach(directoryPath => Directory.CreateDirectory(directoryPath));
+
+      Console.WriteLine($"{(option.HasFlag(ImportOption.Move) ? "Moving" : "Copying")} files...");
+      var progressBar = new ProgressBar(50, files.Length);
+      var isWriteLog = option.HasFlag(ImportOption.Log);
+      files.AsParallelOrSingleAndForAll(file =>
+      {
+        var message = CopyFile(file, option, progressBar);
+        if (isWriteLog)
+        {
+          lock (progressBar)
+            progressBar.Update(message);
+        }
+        else
+        {
+          lock (progressBar)
+            progressBar.Update();
+        }
+      }, threadCount);
+      progressBar.Done();
+    }
 
     Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalSeconds)} s");
+
+    Console.WriteLine("Press Enter to exit.");
+    Console.ReadLine();
   }
 }

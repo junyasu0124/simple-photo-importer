@@ -54,6 +54,7 @@ SimplePhotoImporter [--source-paths=...] [--dest-paths] ([--grouping-mode=...]) 
 | --custom-video-extension | Add custom video extension (e.g. `--custom-video-extension=:remove`(<-Remove the default extensions)` .video`) |
 | --date-info-priority | Change priority of the way to get shooting date time. **1**: Exif, **2**: Media created, **3**: Creation, **4**: Modified, **5**: Access  You must specify all values separated by a space. |
 | --single-thread | Use a single thread |
+| --log | Output log |
 
 ## License
 

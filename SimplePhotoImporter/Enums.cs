@@ -79,6 +79,7 @@ public enum ImportOption
   AddCustomVideoExtension = 16,
   ChangeDateInfoPriority = 32,
   UseASingleThread = 128,
+  Log = 256,
 }
 
 [Flags]
