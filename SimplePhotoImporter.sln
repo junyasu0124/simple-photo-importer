@@ -5,8 +5,9 @@ VisualStudioVersion = 17.9.34701.34
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimplePhotoImporter", "SimplePhotoImporter\SimplePhotoImporter.csproj", "{29141537-3A6A-466F-A1EA-28256DC117C0}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目", "ソリューション項目", "{6ECC48D1-08C1-46D9-A2DF-6ECE5B22A173}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目", "ソリューション項目", "{6ACD8428-54A6-47CB-B3CD-CF6F2378C9D3}"
 	ProjectSection(SolutionItems) = preProject
+		LICENSE.txt = LICENSE.txt
 		README.md = README.md
 		SimplePhotoImporter.exe = SimplePhotoImporter.exe
 	EndProjectSection
