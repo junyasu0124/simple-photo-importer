@@ -9,7 +9,7 @@
     <StartupObject>SimplePhotoImporter.Program</StartupObject>
     <Title>SimplePhotoImporter</Title>
     <Authors>junyasu0124</Authors>
-	<Version>1.0.1</Version>
+	<Version>1.0.2</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
