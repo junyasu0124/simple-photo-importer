@@ -428,7 +428,7 @@ public static partial class Usage
         }
       }
 
-      return (true, false, ([.. sourcePaths], [.. destPaths], [.. destPaths], groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, photoExtensions, videoExtensions, wayToGetShootingDateTime));
+      return (true, false, ([.. sourcePaths], [.. excludedSourcePaths], [.. destPaths], groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, photoExtensions, videoExtensions, wayToGetShootingDateTime));
     }
   }
 }

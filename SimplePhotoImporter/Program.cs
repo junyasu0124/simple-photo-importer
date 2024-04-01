@@ -1,4 +1,5 @@
-﻿using static SimplePhotoImporter.Checks.Checks;
+﻿using System.Text;
+using static SimplePhotoImporter.Checks.Checks;
 using static SimplePhotoImporter.CustomRegexes;
 using static SimplePhotoImporter.Files.Files;
 using static SimplePhotoImporter.Files.GetFiles.GetFiles;
@@ -500,23 +501,43 @@ public partial class Program
 
       Console.WriteLine($"{(option.HasFlag(ImportOption.Move) ? "Moving" : "Copying")} files...");
       var progressBar = new ProgressBar(50, files.Length);
-      var isWriteLog = option.HasFlag(ImportOption.Log);
+      var isLog = option.HasFlag(ImportOption.Log);
+
+      StringBuilder logString = new();
+      StringBuilder errorLogString = new();
 
       files.AsParallelOrSingleAndForAll(file =>
       {
-        var (hasThrownException, message) = CopyFile(file, option, progressBar);
-        if (isWriteLog || hasThrownException)
+        try
         {
-          lock (progressBar)
-            progressBar.Update(message);
-        }
-        else
-        {
+          var (hasThrownException, message) = CopyFile(file, option);
           lock (progressBar)
             progressBar.Update();
+          if (isLog)
+          {
+            lock (logString)
+              logString.AppendLine(message);
+          }
+          if (hasThrownException)
+          {
+            lock (errorLogString)
+              errorLogString.AppendLine(message);
+          }
+        }
+        catch (Exception e)
+        {
+          File.AppendAllText("D:\\error.txt", e.Message);
         }
       }, threadCount);
       progressBar.Done();
+
+      var log = logString.ToString();
+      var errorLog = logString.ToString();
+
+      if (isLog)
+        Console.WriteLine(log);
+      else if (errorLog.Length > 0)
+        Console.WriteLine(errorLog);
     }
 
     Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalSeconds)} s");

@@ -2,7 +2,7 @@
 
 public static partial class Files
 {
-  public static (bool HasThrownException, string Message) CopyFile(FileAddress file, ImportOption option, ProgressBar progressBar)
+  public static (bool HasThrownException, string Message) CopyFile(FileAddress file, ImportOption option)
   {
     if (File.Exists(file.DestFilePath))
     {
