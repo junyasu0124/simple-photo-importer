@@ -10,6 +10,7 @@
     <Title>SimplePhotoImporter</Title>
     <Authors>junyasu0124</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
 
   <ItemGroup>

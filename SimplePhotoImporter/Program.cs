@@ -495,5 +495,7 @@ public partial class Program
     }, threadCount);
     progress.Done("Done");
     Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalMilliseconds)} ms");
+
+    Console.ReadLine();
   }
 }
