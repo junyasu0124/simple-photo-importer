@@ -115,6 +115,11 @@ public static partial class Usage
       {
         if (args[i].StartsWith(arguments[1]))
           break;
+        else if (arguments[2..].Any(x => args[i].StartsWith(x)) || options.Any(x => args[i].StartsWith(x)))
+        {
+          Console.WriteLine("The second argument must be --dest-paths=...");
+          return (false, false, null);
+        }
         var path = " \"" + (i == 0 ? Regex.Replace(args[0], $"^{arguments[0]}", "") : " " + args[i]) + "\"";
         pathsString.Append(path);
       }
@@ -138,7 +143,7 @@ public static partial class Usage
           Console.WriteLine("The argument is duplicated.");
           return (false, false, null);
         }
-        else if (arguments[2..].Any(x => args[i].StartsWith(x)))
+        else if (arguments[2..].Any(x => args[i].StartsWith(x)) || options.Any(x => args[i].StartsWith(x)))
           break;
         pathsString.Append(" \"" + (i == startI ? Regex.Replace(args[startI], $"^{arguments[1]}", "") : args[i]) + "\"");
       }
