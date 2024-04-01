@@ -484,6 +484,9 @@ public partial class Program
       _ => throw new InvalidOperationException(),
     };
 
+    Console.WriteLine($"Found {files.Length} files.");
+
+    Console.WriteLine("Creating directories...");
     GetDirectoriesFromFiles(files.Select(x => x.DestFilePath)).ForEach(directoryPath => Directory.CreateDirectory(directoryPath));
 
     var progress = new Progress(50, files.Length);
@@ -494,8 +497,7 @@ public partial class Program
         progress.Update("");
     }, threadCount);
     progress.Done("Done");
-    Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalMilliseconds)} ms");
 
-    Console.ReadLine();
+    Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalSeconds)} s");
   }
 }
