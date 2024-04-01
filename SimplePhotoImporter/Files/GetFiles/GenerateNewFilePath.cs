@@ -18,7 +18,7 @@ public static partial class GetFiles
     else
       return fileNameFormat switch
       {
-        FileNameFormat.OriginalFileName => Path.Combine(directoryPath, fileName),
+        FileNameFormat.OriginalFileName => Path.Combine(directoryPath, Path.GetFileNameWithoutExtension(fileName) + extension),
         FileNameFormat.ShootingDateTimeNoGrouping => Path.Combine(directoryPath, $"{shootingDate:yyyyMMddHHmmss}{extension}"),
         FileNameFormat.ShootingDateTimeGroupedByUnderBar => Path.Combine(directoryPath, $"{shootingDate:yyyy_MM_dd_HH_mm_ss}{extension}"),
         FileNameFormat.ShootingDateTimeGroupedByHyphen => Path.Combine(directoryPath, $"{shootingDate:yyyy-MM-dd-HH-mm-ss}{extension}"),
