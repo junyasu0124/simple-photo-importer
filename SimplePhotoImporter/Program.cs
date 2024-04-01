@@ -59,7 +59,7 @@ public partial class Program
     {
       while (true)
       {
-        Console.WriteLine("Enter the paths to the folder you want to import from. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
+        Console.WriteLine("Enter the paths to the folder you want to import FROM. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
         Console.WriteLine("If you want to exclude a directory, enter the path with a asterisk at the beginning.");
         Console.WriteLine("e.g. \"C:\\Users\\user\\Pictures Folder\" *\"C:\\Users\\user\\Pictures Folder\\excluded\"");
         var inputFromPath = Console.ReadLine();
@@ -77,7 +77,7 @@ public partial class Program
 
       while (true)
       {
-        Console.WriteLine("Enter the paths to the folder you want to import to. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
+        Console.WriteLine("Enter the paths to the folder you want to import TO. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space).");
         var inputToPath = Console.ReadLine();
 
         var (message, paths, _) = CheckInputDirectories(inputToPath, false);
@@ -501,10 +501,11 @@ public partial class Program
       Console.WriteLine($"{(option.HasFlag(ImportOption.Move) ? "Moving" : "Copying")} files...");
       var progressBar = new ProgressBar(50, files.Length);
       var isWriteLog = option.HasFlag(ImportOption.Log);
+
       files.AsParallelOrSingleAndForAll(file =>
       {
-        var message = CopyFile(file, option, progressBar);
-        if (isWriteLog)
+        var (hasThrownException, message) = CopyFile(file, option, progressBar);
+        if (isWriteLog || hasThrownException)
         {
           lock (progressBar)
             progressBar.Update(message);
@@ -520,7 +521,7 @@ public partial class Program
 
     Console.WriteLine($"Elapsed time: {Math.Floor((DateTimeOffset.Now - startTime).TotalSeconds)} s");
 
-    Console.WriteLine("Press Enter to exit.");
-    Console.ReadLine();
+    Console.WriteLine("Press any key to exit.");
+    Console.ReadKey();
   }
 }

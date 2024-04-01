@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using static SimplePhotoImporter.CustomRegexes;
 
-#pragma warning disable CA1416 // プラットフォームの互換性を検証
+#pragma warning disable CA1416
 
 namespace SimplePhotoImporter.Files.Utils;
 

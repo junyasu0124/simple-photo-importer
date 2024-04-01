@@ -1,20 +1,32 @@
 ﻿namespace SimplePhotoImporter;
 
+#pragma warning disable CS0162
+
+public static class AssemblyState
+{
+  public const bool IsDebug =
+#if DEBUG
+    true;
+#else
+    false;
+#endif
+}
+
 public class ProgressBar
 {
   private readonly int width;
   private readonly int total;
   private int current = 0;
-  private readonly int firstCursorTop;
   private int textCursorTop;
+  bool isWroteText = false;
   private readonly int maxTextLength;
 
   public ProgressBar(int width, int total)
   {
     this.width = width;
     this.total = total;
-    firstCursorTop = Console.CursorTop;
-    textCursorTop = firstCursorTop + 1;
+    previousCursorTop = Console.CursorTop;
+    textCursorTop = -1;
     // "#[" + "<"*width + "]#" + "(100.0%<-100/100)"
     maxTextLength = width + 4 + 11 + total.ToString().Length * 2;
 
@@ -36,6 +48,7 @@ public class ProgressBar
     Update(++current, text);
   }
 
+  int previousCursorTop;
   public void Update(int current, string text)
   {
     this.current = current;
@@ -46,9 +59,11 @@ public class ProgressBar
     string gauge = new string('>', widthNow) + new string(' ', width - widthNow);
     string status = $"({parcent * 100:f1}%<-{current}/{total})";
 
-    Console.SetCursorPosition(0, firstCursorTop);
+    Console.SetCursorPosition(0, previousCursorTop);
     Console.WriteLine($"#[{gauge}]#{status}".PadRight(maxTextLength, ' '));
-    //cursorTop--;
+
+    //if (!AssemblyState.IsDebug)
+    previousCursorTop = Console.CursorTop - 1;
 
     if (!string.IsNullOrEmpty(text))
       WriteText(text);
@@ -63,16 +78,57 @@ public class ProgressBar
     gauge += new string('=', width - gauge.Length);
     string status = $"(100.0%<-{total}/{total})";
 
-    Console.SetCursorPosition(0, firstCursorTop);
+    Console.SetCursorPosition(0, previousCursorTop);
     Console.WriteLine($"#[{gauge}]#{status} ".PadRight(maxTextLength, ' '));
 
-    Console.SetCursorPosition(0, textCursorTop);
+    if (AssemblyState.IsDebug)
+    {
+      if (textCursorTop == -1)
+        textCursorTop = Console.CursorTop;
+      Console.SetCursorPosition(0, textCursorTop);
+    }
+    else
+    {
+      if (isWroteText)
+      {
+        Console.SetCursorPosition(0, textCursorTop);
+        Console.WriteLine();
+      }
+    }
+
     Console.CursorVisible = true;
   }
 
   public void WriteText(string text)
   {
-    Console.SetCursorPosition(0, textCursorTop++);
-    Console.WriteLine(text);
+    if (AssemblyState.IsDebug)
+    {
+      if (textCursorTop == -1)
+      {
+        textCursorTop = Console.CursorTop;
+      }
+      Console.SetCursorPosition(0, textCursorTop);
+      if (isWroteText)
+        Console.WriteLine();
+      Console.Write(text);
+      if (isWroteText)
+        previousCursorTop--;
+      isWroteText = true;
+    }
+    else
+    {
+      if (textCursorTop != -1)
+      {
+        isWroteText = true;
+        Console.SetCursorPosition(0, textCursorTop);
+        Console.WriteLine();
+      }
+      Console.Write(text);
+      textCursorTop = Console.CursorTop;
+      if (isWroteText)
+      {
+        previousCursorTop--;
+      }
+    }
   }
 }

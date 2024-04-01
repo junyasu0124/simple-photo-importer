@@ -1,8 +1,7 @@
 {
   "profiles": {
     "SimplePhotoImporter": {
-      "commandName": "Project",
-      "commandLineArgs": "--source-paths=d:\\pictures --dest-paths=d:\\separated --conflict-resolution=4 --grouping-mode=d --single-thread --log"
+      "commandName": "Project"
     }
   }
 }
