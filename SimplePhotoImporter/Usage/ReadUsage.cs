@@ -89,8 +89,6 @@ public static partial class Usage
     }
     else if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v" || args[0] == "-V"))
     {
-      var version = typeof(Program).Assembly.GetName().Version;
-      Console.WriteLine("Simple Photo Importer v" + version);
       return (false, false, null);
     }
     else if (args.Length == 0)
