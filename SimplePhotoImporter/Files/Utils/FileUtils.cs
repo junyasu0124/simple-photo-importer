@@ -1,10 +1,13 @@
-﻿using Shell32;
+﻿using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
+using MetadataExtractor.Formats.QuickTime;
+using Shell32;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using static SimplePhotoImporter.CustomRegexes;
-
-#pragma warning disable CA1416
 
 namespace SimplePhotoImporter.Files.Utils;
 
@@ -28,15 +31,10 @@ public static class FileUtils
     }
   }
 
-  public static DateTimeOffset GetShootingDate(string filePath, string[] photoExtensions, string[] videoExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
+  public static DateTimeOffset GetShootingDate(string filePath, HashSet<string> videoExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
   {
     var extension = Path.GetExtension(filePath).ToLower();
     var isVideo = videoExtensions.Contains(extension);
-    if (!isVideo)
-    {
-      if (!photoExtensions.Contains(extension))
-        throw new ArgumentException("The file is not a photo or a video.");
-    }
     var ways = isVideo ? wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.Exif) : wayToGetShootingDateTime.Where(way => way != WayToGetShootingDateTime.MediaCreated);
     DateTimeOffset? creation = null;
     DateTimeOffset? modified = null;
@@ -74,19 +72,45 @@ public static class FileUtils
 
     DateTimeOffset? ByExif(string filePath)
     {
+      if (string.Compare(Path.GetExtension(filePath), ".heic", true, CultureInfo.InvariantCulture) == 0)
+        return ByExifAlternative(filePath);
+      PropertyItem? item = null;
       try
       {
         using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         using var image = Image.FromStream(fileStream, false, false);
-        var item = image.GetPropertyItem(36867);
-        if (item == null || item.Value == null || item.Value.Length == 0)
+        item = image.GetPropertyItem(36867);
+      }
+      catch
+      {
+        try
+        {
+          return ByExifAlternative(filePath);
+        }
+        catch
+        {
           return null;
+        }
+      }
+      try
+      {
+        if (item == null || item.Value == null || item.Value.Length == 0)
+          return ByExifAlternative(filePath);
         var picDateStr = Encoding.UTF8.GetString(item.Value).Trim(['\0']);
         return DateTimeOffset.ParseExact(picDateStr, "yyyy:MM:dd HH:mm:ss", null);
       }
       catch
       {
         return null;
+      }
+
+      DateTimeOffset? ByExifAlternative(string filePath)
+      {
+        var data = ImageMetadataReader.ReadMetadata(filePath);
+        var dateTime = data.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDateTime(ExifDirectoryBase.TagDateTimeOriginal) ?? data.OfType<ExifIfd0Directory>().FirstOrDefault()?.GetDateTime(ExifDirectoryBase.TagDateTime);
+        if (dateTime == null)
+          return null;
+        return new DateTimeOffset(dateTime.Value);
       }
     }
     DateTimeOffset? ByMediaCreated(string filePath, ref DateTimeOffset? creation, ref DateTimeOffset? modified)
@@ -102,10 +126,10 @@ public static class FileUtils
         FolderItem folderItem = objFolder.ParseName(Path.GetFileName(filePath));
         var dateString = objFolder.GetDetailsOf(folderItem, 208);
         if (dateString == null)
-          return null;
+          return ByQuickTimeMetadata(filePath);
         dateString = MatchOtherThanNumbers().Replace(dateString, "");
         if (dateString.Length != 12)
-          return null;
+          return ByQuickTimeMetadata(filePath);
         var mediaCreated = DateTimeOffset.ParseExact(dateString, "yyyyMMddHHmm", null);
 
         creation ??= ByCreation(filePath);
@@ -127,6 +151,15 @@ public static class FileUtils
       catch
       {
         return null;
+      }
+
+      DateTimeOffset? ByQuickTimeMetadata(string filePath)
+      {
+        var data = ImageMetadataReader.ReadMetadata(filePath);
+        var dateTime = data.OfType<QuickTimeMetadataHeaderDirectory>().FirstOrDefault()?.GetDateTime(QuickTimeMetadataHeaderDirectory.TagCreationDate);
+        if (dateTime == null)
+          return null;
+        return new DateTimeOffset(dateTime.Value);
       }
     }
     DateTimeOffset? ByCreation(string filePath)

@@ -73,11 +73,12 @@ public enum ConflictResolution
 public enum ImportOption
 {
   Move = 1,
-  MakeExtensionLower = 2,
-  MakeExtensionUpper = 4,
-  AddCustomPhotoExtension = 8,
-  AddCustomVideoExtension = 16,
-  ChangeDateInfoPriority = 32,
+  Range = 2,
+  MakeExtensionLower = 4,
+  MakeExtensionUpper = 8,
+  AddCustomPhotoExtension = 16,
+  AddCustomVideoExtension = 32,
+  ChangeDateInfoPriority = 64,
   UseASingleThread = 128,
   Log = 256,
 }
@@ -98,5 +99,5 @@ public enum WayToGetShootingDateTime
   MediaCreated,
   Creation,
   Modified,
-  Access,
+  Access
 }

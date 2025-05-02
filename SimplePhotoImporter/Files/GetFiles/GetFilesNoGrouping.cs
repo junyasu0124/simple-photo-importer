@@ -4,9 +4,9 @@ namespace SimplePhotoImporter.Files.GetFiles;
 
 public static partial class GetFiles
 {
-  public static FileAddress[] GetFilesNoGrouping(string[] sourcePaths, string[] excludedSourcePaths, string[] destPaths, string[] photoExtensions, string[] videoExtensions, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option, WayToGetShootingDateTime[] wayToGetShootingDateTime)
+  public static FileAddress[] GetFilesNoGrouping(string[] sourcePaths, string[] excludedSourcePaths, string[] destPaths, List<(DateTimeOffset Start, DateTimeOffset End)>? dateRanges, HashSet<string> photoExtensions, HashSet<string> videoExtensions, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option, WayToGetShootingDateTime[] wayToGetShootingDateTime, int threadNumber)
   {
-    var files = GetAllFiles(sourcePaths, excludedSourcePaths, photoExtensions, videoExtensions, wayToGetShootingDateTime);
+    var files = GetAllFiles(sourcePaths, excludedSourcePaths, dateRanges, photoExtensions, videoExtensions, wayToGetShootingDateTime, threadNumber);
 
     List<FileAddress> result = [];
 

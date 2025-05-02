@@ -15,7 +15,7 @@ public static partial class Usage
     {
       if (usageItem is UsageLineBreak)
       {
-        Console.WriteLine();
+        Print();
         continue;
       }
       else if (usageItem is UsageText usageText)
@@ -33,19 +33,19 @@ public static partial class Usage
           {
             if (isFirst)
             {
-              Console.WriteLine($"{header}{description}");
+              Print($"{header}{description}");
               isFirst = false;
             }
             else
-              Console.WriteLine($"{string.Empty.PadRight(header.Length)}{description}");
+              Print($"{string.Empty.PadRight(header.Length)}{description}");
             description.Clear();
           }
           description.Append(line + " ");
         }
         if (isFirst)
-          Console.WriteLine($"{header}{description}");
+          Print($"{header}{description}");
         else
-          Console.WriteLine($"{string.Empty.PadRight(header.Length)}{description}");
+          Print($"{string.Empty.PadRight(header.Length)}{description}");
         continue;
       }
 
@@ -93,7 +93,7 @@ public static partial class Usage
       }
       else if (item is UsageParent parent)
       {
-        Console.WriteLine(parent.Name + ":");
+        Print(parent.Name + ":");
         var maxlementLength = parent.Childrens.Max(x => x.Name.Length);
         foreach (var child in parent.Childrens)
         {
@@ -120,19 +120,19 @@ public static partial class Usage
         {
           if (isFirst)
           {
-            Console.WriteLine($"{indention}{children.Name.PadRight(maxNameLength)} {description}");
+            Print($"{indention}{children.Name.PadRight(maxNameLength)} {description}");
             isFirst = false;
           }
           else
-            Console.WriteLine($"{indention}{string.Empty.PadRight(maxNameLength)} {description}");
+            Print($"{indention}{string.Empty.PadRight(maxNameLength)} {description}");
           description.Clear();
         }
         description.Append(line + " ");
       }
       if (isFirst)
-        Console.WriteLine($"{indention}{children.Name.PadRight(maxNameLength)} {description}");
+        Print($"{indention}{children.Name.PadRight(maxNameLength)} {description}");
       else
-        Console.WriteLine($"{indention}{string.Empty.PadRight(maxNameLength)} {description}");
+        Print($"{indention}{string.Empty.PadRight(maxNameLength)} {description}");
     }
   }
 }

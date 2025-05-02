@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using static SimplePhotoImporter.Checks.Checks;
 
@@ -20,10 +21,11 @@ public static partial class Usage
     string? CustomDirectoryFormatByD,
     ConflictResolution ConflictResolution,
     ImportOption Option,
-    string[] PhotoExtensions,
-    string[] VideoExtensions,
+    List<(DateTimeOffset Start, DateTimeOffset End)>? DateRanges,
+    HashSet<string> PhotoExtensions,
+    HashSet<string> VideoExtensions,
     WayToGetShootingDateTime[] WayToGetShootingDateTime)? Data
-    ) Read(string[] args, string[] photoExtensions, string[] videoExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
+    ) Read(string[] args, HashSet<string> photoExtensions, HashSet<string> videoExtensions, WayToGetShootingDateTime[] wayToGetShootingDateTime)
   {
     string[] arguments =
     [
@@ -37,6 +39,7 @@ public static partial class Usage
     string[] options =
     [
       "--move",
+      "--range=",
       "--lower-extension",
       "--upper-extension",
       "--custom-photo-extension=",
@@ -45,6 +48,9 @@ public static partial class Usage
       "--single-thread",
       "--log"
     ];
+
+    var dateFormat = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
+    var timeFormat = DateTimeFormatInfo.CurrentInfo.LongTimePattern;
 
     if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "-H"))
     {
@@ -65,7 +71,7 @@ public static partial class Usage
             ]
           ),
           new UsageLineBreak(),
-          new UsageChildren($"{arguments[0]}...", "The paths to the folder you want to import from. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space). If you want to exclude a directory, enter the path with a asterisk at the beginning. e.g. \"C:\\Users\\user\\Pictures Folder\" *\"C:\\Users\\user\\Pictures Folder\\excluded\""),
+          new UsageChildren($"{arguments[0]}...", $"The paths to the folder you want to import from. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space). If you want to exclude a directory, enter the path with a asterisk at the beginning. e.g. {arguments[0]}\"C:\\Users\\user\\Pictures Folder\" *\"C:\\Users\\user\\Pictures Folder\\excluded\""),
           new UsageChildren($"{arguments[1]}...", "The paths to the folder you want to import to. You can enter multiple paths by separating them with a space (use double quotes if the path contains a space)."),
           new UsageChildren($"{arguments[2]}...", "The mode to for grouping files by directory. 1({space}): \\IMG_0001.jpg, 2(y\\M\\d): \\yyyy\\MM\\dd\\IMG_0001.jpg, 3(y\\d): \\yyyy\\dd\\IMG_0001.jpg, 4(d): \\dd\\IMG_0001.jpg  <Default: 1>"),
           new UsageChildren($"{arguments[3]}...", "The format of the file name. Enter the format like yyyyMMddHHmmss. <Default: {OriginalFileName}>"),
@@ -75,13 +81,14 @@ public static partial class Usage
           new UsageParent($"{nameof(options)}",
             [
               new UsageChildren(options[0], "Move instead of copy"),
-              new UsageChildren(options[1], "Make the extension lower case"),
-              new UsageChildren(options[2], "Make the extension upper case"),
-              new UsageChildren($"{options[3]}...", "Add custom photo extension (e.g. --custom-photo-extension=:remove(<-Remove the default extensions) .photo)"),
-              new UsageChildren($"{options[4]}...", "Add custom video extension (e.g. --custom-video-extension=:remove(<-Remove the default extensions) .video)"),
-              new UsageChildren($"{options[5]}...", "Change priority of the way to get shooting date time. 1: Exif, 2: Media created, 3: Creation, 4: Modified, 5: Access  You must specify all values separated by a space."),
-              new UsageChildren(options[6], "Use a single thread"),
-              new UsageChildren(options[7], "Output log")
+              new UsageChildren(options[1], $"Specify range of files to import by date (e.g. {new DateTime(2024, 1, 1).ToString($"{dateFormat} {timeFormat}")} ~ {new DateTime(2024, 1, 2, 23, 59, 59).ToString($"{dateFormat} {timeFormat}")} | {new DateTime(2024, 2, 1).ToString($"{dateFormat} {timeFormat}")} ~ {new DateTime(2024, 2, 2, 23, 59, 59).ToString($"{dateFormat} {timeFormat}")}"),
+              new UsageChildren(options[2], "Make the extension lower case"),
+              new UsageChildren(options[3], "Make the extension upper case"),
+              new UsageChildren($"{options[4]}...", "Add custom photo extension (e.g. --custom-photo-extension=:remove(<-Remove the default extensions) .photo .picture)"),
+              new UsageChildren($"{options[5]}...", "Add custom video extension (e.g. --custom-video-extension=:remove(<-Remove the default extensions) .video .movie)"),
+              new UsageChildren($"{options[6]}...", "Change priority of the way to get shooting date time. 1: Exif, 2: Media created, 3: Creation, 4: Modified, 5: Access  You must specify all values separated by a space."),
+              new UsageChildren(options[7], "Use a single thread"),
+              new UsageChildren(options[8], "Output log")
             ]
           ),
         ]);
@@ -104,7 +111,7 @@ public static partial class Usage
       List<string> excludedSourcePaths = [];
       if (!args[0].StartsWith(arguments[0]))
       {
-        Console.WriteLine("The first argument must be --source-paths=...");
+        PrintError("The first argument must be --source-paths=...");
         return (false, false, null);
       }
 
@@ -115,7 +122,7 @@ public static partial class Usage
           break;
         else if (arguments[2..].Any(x => args[i].StartsWith(x)) || options.Any(x => args[i].StartsWith(x)))
         {
-          Console.WriteLine("The second argument must be --dest-paths=...");
+          PrintError("The second argument must be --dest-paths=...");
           return (false, false, null);
         }
         var path = " \"" + (i == 0 ? Regex.Replace(args[0], $"^{arguments[0]}", "") : " " + args[i]) + "\"";
@@ -124,11 +131,11 @@ public static partial class Usage
       var (pathMessage, paths, excludedPaths) = CheckInputDirectories(pathsString.ToString(), true);
       if (pathMessage != null)
       {
-        Console.WriteLine(pathMessage);
+        PrintError(pathMessage);
         return (false, false, null);
       }
-      sourcePaths = [.. paths];
-      excludedSourcePaths = [.. excludedPaths];
+      sourcePaths = [.. paths!];
+      excludedSourcePaths = [.. excludedPaths!];
 
       List<string> destPaths = [];
 
@@ -138,7 +145,7 @@ public static partial class Usage
       {
         if (args[i].StartsWith(arguments[0]) || (args[i].StartsWith(arguments[1]) && i != startI))
         {
-          Console.WriteLine("The argument is duplicated.");
+          PrintError("The argument is duplicated.");
           return (false, false, null);
         }
         else if (arguments[2..].Any(x => args[i].StartsWith(x)) || options.Any(x => args[i].StartsWith(x)))
@@ -148,10 +155,10 @@ public static partial class Usage
       (pathMessage, paths, _) = CheckInputDirectories(pathsString.ToString(), false);
       if (pathMessage != null)
       {
-        Console.WriteLine(pathMessage);
+        PrintError(pathMessage);
         return (false, false, null);
       }
-      destPaths = [.. paths];
+      destPaths = [.. paths!];
 
       GroupingMode groupingMode = GroupingMode.NoGrouping;
       (FileNameFormat File, DirectoryNameFormatByYMD DirectoryByYMD, DirectoryNameFormatByYD DirectoryByYD, DirectoryNameFormatByD DirectoryByD) nameFormat = (0, 0, 0, 0);
@@ -168,7 +175,7 @@ public static partial class Usage
         // --source-paths= --dest-paths
         if (args[i].StartsWith(arguments[0]) || args[i].StartsWith(arguments[1]))
         {
-          Console.WriteLine("The argument is duplicated.");
+          PrintError("The argument is duplicated.");
           return (false, false, null);
         }
         // --grouping-mode
@@ -188,7 +195,7 @@ public static partial class Usage
           }
           if (inputGroupingMode == null)
           {
-            Console.WriteLine("--grouping-mode=... is invalid. Please enter 1, 2, 3, 4, {space}, y\\M\\d, y\\d, or d.");
+            PrintError("--grouping-mode=... is invalid. Please enter 1, 2, 3, 4, {space}, y\\M\\d, y\\d, or d.");
             return (false, false, null);
           }
           else groupingMode = inputGroupingMode.Value;
@@ -211,7 +218,7 @@ public static partial class Usage
           customFileFormat = customFileFormat.Trim('"');
           if (!IsValidDateTimeFormat(customFileFormat))
           {
-            Console.WriteLine("--file-name-format=... is invalid.");
+            PrintError("--file-name-format=... is invalid.");
             return (false, false, null);
           }
         }
@@ -232,7 +239,7 @@ public static partial class Usage
           customDirectoryFormatTemp = customDirectoryFormatTemp.Trim('"');
           if (customDirectoryFormatTemp.Split('\\').Any(x => !IsValidDateTimeFormat(x)))
           {
-            Console.WriteLine("--directory-name-format=... is invalid.");
+            PrintError("--directory-name-format=... is invalid.");
             return (false, false, null);
           }
         }
@@ -250,7 +257,7 @@ public static partial class Usage
           };
           if (inputConflictResolution == null)
           {
-            Console.WriteLine("--conflict-resolution=... is invalid. Please enter 1, 2, 3, 4, or 5.");
+            PrintError("--conflict-resolution=... is invalid. Please enter 1, 2, 3, 4, or 5.");
             return (false, false, null);
           }
           else conflictResolution = inputConflictResolution.Value;
@@ -259,7 +266,7 @@ public static partial class Usage
           break;
         else
         {
-          Console.WriteLine("The argument is invalid.");
+          PrintError("The argument is invalid.");
           return (false, false, null);
         }
       }
@@ -271,7 +278,7 @@ public static partial class Usage
           var inputDirectoryNameFormatByYMD = customDirectoryFormatTemp.Split("\\");
           if (inputDirectoryNameFormatByYMD.Length != 3)
           {
-            Console.WriteLine("--directory-name-format=... is invalid. Please enter the format like yyyy\\MM\\dd.");
+            PrintError("--directory-name-format=... is invalid. Please enter the format like yyyy\\MM\\dd.");
             return (false, false, null);
           }
           customDirectoryFormatByYMD = (inputDirectoryNameFormatByYMD[0], inputDirectoryNameFormatByYMD[1], inputDirectoryNameFormatByYMD[2]);
@@ -282,7 +289,7 @@ public static partial class Usage
           var inputDirectoryNameFormatByYD = customDirectoryFormatTemp.Split("\\");
           if (inputDirectoryNameFormatByYD.Length != 2)
           {
-            Console.WriteLine("--directory-name-format=... is invalid. Please enter the format like yyyy\\dd.");
+            PrintError("--directory-name-format=... is invalid. Please enter the format like yyyy\\dd.");
             return (false, false, null);
           }
           customDirectoryFormatByYD = (inputDirectoryNameFormatByYD[0], inputDirectoryNameFormatByYD[1]);
@@ -293,7 +300,7 @@ public static partial class Usage
           var inputDirectoryNameFormatByD = customDirectoryFormatTemp.Split("\\");
           if (inputDirectoryNameFormatByD.Length != 1)
           {
-            Console.WriteLine("--directory-name-format=... is invalid. Please enter the format like yyyyMMdd.");
+            PrintError("--directory-name-format=... is invalid. Please enter the format like yyyyMMdd.");
             return (false, false, null);
           }
           customDirectoryFormatByD = customDirectoryFormatTemp;
@@ -301,16 +308,17 @@ public static partial class Usage
         }
         else
         {
-          Console.WriteLine("You cannot specify --directory-name-format=... when --grouping-mode=1.");
+          PrintError("You cannot specify --directory-name-format=... when --grouping-mode=1.");
         }
       }
       if (groupingMode == GroupingMode.NoGrouping && conflictResolution == ConflictResolution.AddNumberToDirectory)
       {
-        Console.WriteLine("You cannot specify --conflict-resolution=5 when --grouping-mode=1.");
+        PrintError("You cannot specify --conflict-resolution=5 when --grouping-mode=1.");
         return (false, false, null);
       }
 
       ImportOption option = 0;
+      List<(DateTimeOffset Start, DateTimeOffset End)>? dateRanges = null;
 
       for (i += 0; i < args.Length; i++)
       {
@@ -319,45 +327,77 @@ public static partial class Usage
         {
           option |= ImportOption.Move;
         }
-        // --lower-extension
-        else if (args[i].StartsWith(options[1]))
+        // --range
+        if (args[i].StartsWith(options[1]))
         {
-          option |= ImportOption.MakeExtensionLower;
-        }
-        // --upper-extension
-        else if (args[i].StartsWith(options[2]))
-        {
-          option |= ImportOption.MakeExtensionUpper;
-        }
-        // --custom-photo-extension
-        else if (args[i].StartsWith(options[3]))
-        {
-          option |= ImportOption.AddCustomPhotoExtension;
-          List<string> extensions = [];
+          option |= ImportOption.Range;
+          List<string> rangeTexts = [];
           startI = i;
           for (i += 0; i < args.Length; i++)
           {
-            if (options.Where(x => x != options[3]).Any(x => args[i].StartsWith(x)))
+            if (options.Where(x => x != options[1]).Any(x => args[i].StartsWith(x)))
             {
               i -= 1;
               break;
             }
             if (startI == i)
-              extensions.Add(Regex.Replace(args[startI], $"^{options[3]}", ""));
+              rangeTexts.Add(Regex.Replace(args[startI], $"^{options[1]}", ""));
             else
-              extensions.Add(args[i]);
+              rangeTexts.Add(args[i]);
           }
-          if (extensions.Contains(":remove"))
+          if (rangeTexts.Count < 5)
           {
-            photoExtensions = [];
-            extensions.Remove(":remove");
+            PrintError("--range=... is invalid.");
+            return (false, false, null);
           }
-          photoExtensions = [.. photoExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
+          List<int> pipeIndexes = [];
+          for (var j = 0; j < rangeTexts.Count; j++)
+            if (rangeTexts[j] == "|")
+              pipeIndexes.Add(j);
+          dateRanges = new List<(DateTimeOffset Start, DateTimeOffset End)>(pipeIndexes.Count + 1);
+          var lastPipeIndex = 0;
+          for (var j = 0; j <= pipeIndexes.Count; j++)
+          {
+            var pipeIndex = j == pipeIndexes.Count ? rangeTexts.Count : pipeIndexes[j];
+            if (pipeIndex - lastPipeIndex != 5)
+            {
+              PrintError("--range=... is invalid.");
+              return (false, false, null);
+            }
+            else
+            {
+              lastPipeIndex = pipeIndex + 1;
+              if (rangeTexts[pipeIndex - 3] == "~"
+                && DateTimeOffset.TryParseExact($"{rangeTexts[pipeIndex - 5]} {rangeTexts[pipeIndex - 4]}", $"{dateFormat} {timeFormat}", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
+                && DateTimeOffset.TryParseExact($"{rangeTexts[pipeIndex - 2]} {rangeTexts[pipeIndex - 1]}", $"{dateFormat} {timeFormat}", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end)
+                && start <= end)
+              {
+                if (start == end)
+                  continue;
+                dateRanges.Add((start, end));
+              }
+              else
+              {
+                PrintError("--range=... is invalid.");
+                return (false, false, null);
+              }
+            }
+          }
         }
-        // --custom-video-extension
+        // --lower-extension
+        else if (args[i].StartsWith(options[2]))
+        {
+          option |= ImportOption.MakeExtensionLower;
+        }
+        // --upper-extension
+        else if (args[i].StartsWith(options[3]))
+        {
+          option |= ImportOption.MakeExtensionUpper;
+        }
+        // --custom-photo-extension
         else if (args[i].StartsWith(options[4]))
         {
-          option |= ImportOption.AddCustomVideoExtension;
+          option |= ImportOption.AddCustomPhotoExtension;
           List<string> extensions = [];
           startI = i;
           for (i += 0; i < args.Length; i++)
@@ -374,16 +414,16 @@ public static partial class Usage
           }
           if (extensions.Contains(":remove"))
           {
-            videoExtensions = [];
+            photoExtensions = [];
             extensions.Remove(":remove");
           }
-          videoExtensions = [.. videoExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
+          photoExtensions = [.. photoExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
         }
-        // --date-info-priority
+        // --custom-video-extension
         else if (args[i].StartsWith(options[5]))
         {
-          option |= ImportOption.ChangeDateInfoPriority;
-          List<WayToGetShootingDateTime?> priorities = [];
+          option |= ImportOption.AddCustomVideoExtension;
+          List<string> extensions = [];
           startI = i;
           for (i += 0; i < args.Length; i++)
           {
@@ -392,7 +432,32 @@ public static partial class Usage
               i -= 1;
               break;
             }
-            priorities.Add((startI == i ? Regex.Replace(args[startI], $"^{options[5]}", "") : args[i]) switch
+            if (startI == i)
+              extensions.Add(Regex.Replace(args[startI], $"^{options[5]}", ""));
+            else
+              extensions.Add(args[i]);
+          }
+          if (extensions.Contains(":remove"))
+          {
+            videoExtensions = [];
+            extensions.Remove(":remove");
+          }
+          videoExtensions = [.. videoExtensions, .. extensions.Select(x => x.StartsWith('.') ? x : "." + x)];
+        }
+        // --date-info-priority
+        else if (args[i].StartsWith(options[6]))
+        {
+          option |= ImportOption.ChangeDateInfoPriority;
+          List<WayToGetShootingDateTime?> priorities = [];
+          startI = i;
+          for (i += 0; i < args.Length; i++)
+          {
+            if (options.Where(x => x != options[6]).Any(x => args[i].StartsWith(x)))
+            {
+              i -= 1;
+              break;
+            }
+            priorities.Add((startI == i ? Regex.Replace(args[startI], $"^{options[6]}", "") : args[i]) switch
             {
               "1" => WayToGetShootingDateTime.Exif,
               "2" => WayToGetShootingDateTime.MediaCreated,
@@ -404,29 +469,36 @@ public static partial class Usage
           }
           if (priorities.Contains(null))
           {
-            Console.WriteLine("--date-info-priority=... is invalid. Please enter 1, 2, 3, 4, 5.");
+            PrintError("--date-info-priority=... is invalid. Please enter 1, 2, 3, 4, 5.");
             return (false, false, null);
           }
-          wayToGetShootingDateTime = priorities.Select(x => x!.Value).ToArray();
+          for (var j = 0; j < 5; j++)
+          {
+            if (!priorities.Contains((WayToGetShootingDateTime)j))
+            {
+              priorities.Add((WayToGetShootingDateTime)j);
+            }
+          }
+          wayToGetShootingDateTime = [.. priorities.Select(x => x!.Value)];
         }
         // --single-thread
-        else if (args[i].StartsWith(options[6]))
+        else if (args[i].StartsWith(options[7]))
         {
           option |= ImportOption.UseASingleThread;
         }
         // --log
-        else if (args[i].StartsWith(options[7]))
+        else if (args[i].StartsWith(options[8]))
         {
           option |= ImportOption.Log;
         }
         else
         {
-          Console.WriteLine("The argument is invalid.");
+          PrintError("The argument is invalid.");
           return (false, false, null);
         }
       }
 
-      return (true, false, ([.. sourcePaths], [.. excludedSourcePaths], [.. destPaths], groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, photoExtensions, videoExtensions, wayToGetShootingDateTime));
+      return (true, false, ([.. sourcePaths], [.. excludedSourcePaths], [.. destPaths], groupingMode, nameFormat, customFileFormat, customDirectoryFormatByYMD, customDirectoryFormatByYD, customDirectoryFormatByD, conflictResolution, option, dateRanges, photoExtensions, videoExtensions, wayToGetShootingDateTime));
     }
   }
 }

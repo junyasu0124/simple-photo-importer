@@ -4,33 +4,32 @@ namespace SimplePhotoImporter.Files.GetFiles;
 
 public static partial class GetFiles
 {
-  public static IEnumerable<FileAddress> GenerateNewFileNameForEachFileName(this KeyValuePair<string, DateTimeOffset>[] files, List<string> skippedDirectories, List<(string Original, string Changed)> addedNumberDirectories, (string DirectoryPath, KeyValuePair<string, DateTimeOffset>[] Files) dayGroup, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option)
+  public static IEnumerable<FileAddress> GenerateNewFileNameForEachFile(this KeyValuePair<string, DateTimeOffset>[] files, List<string> skippedDirectories, List<(string Original, string Changed)> addedNumberDirectories, (string DirectoryPath, KeyValuePair<string, DateTimeOffset>[] Files) dayGroup, FileNameFormat fileNameFormat, string? customFileNameFormat, ConflictResolution conflictResolution, ImportOption option)
   {
     return files
-      .Select(file => {
+      .Select(file =>
+      {
         var newFilePath = GenerateNewFilePath(dayGroup.DirectoryPath, Path.GetFileName(file.Key), file.Value, option, fileNameFormat, customFileNameFormat);
-        return (File: file, NewFilePath: newFilePath );
-        })
-      .GroupBy(file => file.NewFilePath, StringComparer.OrdinalIgnoreCase )
+        return (File: file, NewFilePath: newFilePath);
+      })
+      .GroupBy(file => file.NewFilePath)
       .Select(x =>
       {
         var newFilePath = x.Key;
-        var files = x.ToArray();
 
         if (skippedDirectories.Contains(dayGroup.DirectoryPath))
           return [];
-        if (addedNumberDirectories.Any(x => x.Original == dayGroup.DirectoryPath))
-        {
-          var changed = addedNumberDirectories.First(x => x.Original == dayGroup.DirectoryPath).Changed;
-          newFilePath = Path.Combine(changed, Path.GetFileName(newFilePath));
-        }
+        var added = addedNumberDirectories.FirstOrDefault(x => x.Original == dayGroup.DirectoryPath);
+        if (added != default)
+          newFilePath = Path.Combine(added.Changed, Path.GetFileName(newFilePath));
 
         if (File.Exists(newFilePath))
         {
           var i = 2;
           if (conflictResolution == ConflictResolution.SkipIfSame)
           {
-            return files.Where(file => !IsSameFile(file.File.Key, newFilePath))
+            return x
+            .Where(file => !IsSameFile(file.File.Key, newFilePath))
             .Select(file =>
             {
               while (true)
@@ -45,7 +44,7 @@ public static partial class GetFiles
           }
           else if (conflictResolution == ConflictResolution.AddNumber)
           {
-            return files.Select(file =>
+            return x.Select(file =>
             {
               while (true)
               {
@@ -79,7 +78,7 @@ public static partial class GetFiles
             addedNumberDirectories.Add((directoryPath, newDirectoryPath));
             List<string> filePaths = [];
             i = 2;
-            foreach (var file in files)
+            foreach (var file in x)
             {
               var fileName = Path.GetFileName(file.NewFilePath);
               var renewedFilePath = Path.Combine(newDirectoryPath, fileName);
@@ -98,7 +97,7 @@ public static partial class GetFiles
               else
                 filePaths.Add(renewedFilePath);
             }
-            return files.Zip(filePaths, (file, filePath) => new FileAddress(file.File.Key, filePath, file.File.Value));
+            return x.Zip(filePaths, (file, filePath) => new FileAddress(file.File.Key, filePath, file.File.Value));
           }
           else if (conflictResolution == ConflictResolution.SkipByDirectory)
           {
@@ -110,17 +109,18 @@ public static partial class GetFiles
         }
         else
         {
-          return files.Length switch
+          var filesArray = x.ToArray();
+          return filesArray.Length switch
           {
             0 => [],
-            1 => files.Select(file => new FileAddress(file.File.Key, newFilePath, file.File.Value)),
+            1 => filesArray.Select(file => new FileAddress(file.File.Key, newFilePath, file.File.Value)),
             _ => AddNumber(),
           };
 
           IEnumerable<FileAddress> AddNumber()
           {
             var i = 1;
-            return files.Select(file =>
+            return filesArray.Select(file =>
             {
               if (i == 1)
               {

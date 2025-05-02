@@ -1,4 +1,4 @@
-﻿namespace SimplePhotoImporter;
+﻿namespace SimplePhotoImporter.Consoles;
 
 public class ProgressBar
 {
@@ -54,10 +54,9 @@ public class ProgressBar
   {
     const string MESSAGE = "Done";
 
-    int sideLen = (int)Math.Floor((float)(width - MESSAGE.Length) / 2);
-    string gauge = new string('=', sideLen) + MESSAGE;
-    gauge += new string('=', width - gauge.Length);
-    string status = $"(100.0%<-{total}/{total})";
+    var sideLength = (int)Math.Floor((float)(width - MESSAGE.Length) / 2);
+    var gauge = new string('=', sideLength) + MESSAGE + new string('=', width - sideLength - MESSAGE.Length);
+    var status = $"(100.0%<-{total}/{total})";
 
     Console.SetCursorPosition(0, barCursorTop);
     Console.WriteLine($"#[{gauge}]#{status} ".PadRight(maxTextLength, ' '));

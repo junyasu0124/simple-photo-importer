@@ -6,7 +6,7 @@ public static partial class Files
   {
     if (File.Exists(file.DestFilePath))
     {
-      return (true, $"[Failed] {file.SourceFilePath} -> {file.DestFilePath}: The file already exists.");
+      return (true, $"\x1b[91m[Failed] {file.SourceFilePath} -> {file.DestFilePath}: The file already exists.\x1b[39m");
     }
     try
     {
@@ -23,11 +23,11 @@ public static partial class Files
     }
     catch (IOException)
     {
-      return (true, $"[Failed] {file.SourceFilePath} -> {file.DestFilePath}: The file already exists.");
+      return (true, $"\x1b[91m[Failed] {file.SourceFilePath} -> {file.DestFilePath}: The file already exists.\x1b[39m");
     }
     catch (Exception e)
     {
-      return (true, $"[Failed] {file.SourceFilePath} -> {file.DestFilePath}: {e.Message}");
+      return (true, $"\x1b[91m[Failed] {file.SourceFilePath} -> {file.DestFilePath}: {e.Message}\x1b[39m");
     }
   }
 }
